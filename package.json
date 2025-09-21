@@ -1,0 +1,26 @@
+{
+  "name": "jacobbox",
+  "version": "1.0.0",
+  "description": "jackbox clone",
+  "homepage": "https://github.com/jacobsmith3204/jacobbox#readme",
+  "bugs": {
+    "url": "https://github.com/jacobsmith3204/jacobbox/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobsmith3204/jacobbox.git"
+  },
+  "license": "ISC",
+  "author": "jacob",
+  "type": "commonjs",
+  "main": "server.ts",
+  "scripts": {
+    "start": "npx vite-node server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2"
+  }
+}
