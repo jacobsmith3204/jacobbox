@@ -40,10 +40,10 @@ server.listen(PORT, () => {
     
     // adds games from the .env file
     const gamehander = new GameHandler(); 
-    Array.from(process.env.GAMES).forEach(name => {
+    process.env.GAMES.split(",").forEach(name => {
          contexts[name] = gamehander;
     });
-    
+    console.log("game contexts", contexts);
 });
 
 // 
