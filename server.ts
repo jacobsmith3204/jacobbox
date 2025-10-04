@@ -12,6 +12,7 @@ import { BaseHandler, TcpClient, findContext, contexts } from './tcpServer';
 
 const PORT = 8000;
 const WEBSITE_FILE_DIR = path.join(__dirname, 'website'); // Directory to stored game files
+const GAME_CLIENT_FILE_DIR = path.join(__dirname, 'game_clients'); // Directory to stored game files
 const SERVER_CERT_DIR = process.env.SERVER_CERT_DIR; // Directory to stored game files
 const SERVER_KEY_DIR = process.env.SERVER_KEY_DIR; // Directory to stored game files
 
@@ -35,7 +36,22 @@ server.listen(PORT, () => {
     console.log(`Server running at https://localhost:${PORT}`);
     // adds contexts to handle the different request types. 
     contexts["/"] = new FileHandler();
+
+    
+    // adds games from the .env file
+    const gamehander = new GameHandler(); 
+    Array.from(process.env.GAMES).forEach(name => {
+         contexts[name] = gamehander;
+    });
+    
 });
+
+// 
+function RegisterGame(context){    
+    console.log("adding game context",context);
+}
+
+
 
 console.log("Started file server");
 
@@ -58,3 +74,51 @@ class FileHandler extends BaseHandler {
     }
 }
 
+class GameHandler extends BaseHandler {
+    HandleGet(client: TcpClient): void {
+        // grabs the correct path
+        const filePath = path.join(GAME_CLIENT_FILE_DIR, client.url.pathname.substring(1)); // Remove leading "/"    
+        client.SendFile(filePath);
+    }
+}
+
+
+
+
+
+
+
+
+class GameRoom {
+    id;
+    clients;  
+    constructor(id){
+        this.id = id;
+        this.clients = []; 
+    }
+
+    AddUser(client : GameClient){
+        this.clients.push(client);
+    }
+    RemoveUser(client : GameClient){
+        this.clients.Remove(client);
+    }
+}
+
+class GameClient {
+    name; 
+    game_room;
+    socket;  
+    constructor(name){
+        this.name = name; 
+        this.game_room;        
+    }
+
+    JoinRoom(room){
+        this.game_room = room;
+        this.game_room.AddUser(this);  
+    }
+    LeaveRoom(){
+        this.game_room.RemoveUser(this); 
+    }
+}
