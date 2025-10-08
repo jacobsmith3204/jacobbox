@@ -14,7 +14,7 @@ import { notStrictEqual } from 'assert';
 import { IncomingMessage } from 'http';
 import Stream from 'stream';
 import Buffer from 'buffer';
-import { sourceMapsEnabled } from 'process';
+import { report, sourceMapsEnabled } from 'process';
 import { Socket } from 'dgram';
 
 const PORT = 8000;
@@ -117,7 +117,7 @@ function HandleWebsocketInitialisationRequest(socket, type, message) {
     socket.removeAllListeners('message'); // should remove the onMessage handler so we can reasign them later depending on the . 
     switch (type) {
         case "serverInitialisation":
-            const gameRoom = GameRoom.CreateNew(socket, message)
+            const gameRoom = GameRoom.CreateNew(socket, message); 
             socket.on('message', (type, message) => { 
                 var data = JSON.parse(message);  
                 HandleServerMessage(gameRoom, data["type"], data["message"]);
@@ -222,11 +222,12 @@ class GameRoom {
         this.clients.delete(client.id);
     }
 
-    static CreateNew(socket, request: object) {
+    static CreateNew(socket, request: object) : GameRoom{
         // client
         const gameRoom = new GameRoom(NEXT_GAME_ID++, socket);
         gameRoom.setupRequest = request;
         GAME_ROOMS.set(gameRoom.id, gameRoom);
+        return gameRoom; 
     }
     static Find(gameID: string) :GameRoom {
         const room = GAME_ROOMS.get(gameID);
@@ -235,7 +236,7 @@ class GameRoom {
     }
 
     SendMessageToAllClients(message){
-        this.clients.array.forEach((client: GameClient) => this.SendMessageToClient(client , message));
+        this.clients.forEach((client: GameClient) => this.SendMessageToClient(client , message));
     }
     SendMessageToClient(client:GameClient, message ){
         client.SendMessage(message);
