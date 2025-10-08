@@ -378,11 +378,11 @@ function HandleCompletedData(socket: AnySocket, opcode: number, data: Buffer) {
         // text
         const text = data.toString('utf8');
         console.log('Received text message:', text);
-        socket.emit("message", "text", text);
+        socket.emit("message", text, "text");
     } else if (opcode === 0x2) {
         // binary
         console.log('Received binary message, length=', data.length);
-        socket.emit("message", "binary", data);
+        socket.emit("message", data, "binary");
     }
 }
 
