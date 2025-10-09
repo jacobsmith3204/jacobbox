@@ -85,13 +85,13 @@ export function GetContentHeaders(target = ""): object {
 // contains the http request and response objects to comunicate back to the client, in adition to some functionality to simplify basic responses. 
 export class TcpClient {
 
-    req; //request data 
-    res; //response endpoint to finish the message
-    url;
+    req: IncomingMessage; //request data 
+    res: ServerResponse<IncomingMessage>; //response endpoint to finish the message
+    url: url.UrlWithParsedQuery;
     queries;
 
-    body;// text version of post request body
-    data;// json version of post request body
+    body: string;// text version of post request body
+    data: object;// json version of post request body
 
     constructor(req: IncomingMessage, res: ServerResponse<IncomingMessage>) {
         this.req = req; //request data 
@@ -101,7 +101,7 @@ export class TcpClient {
     }
 
 
-    SendResponse(code: Number, data, headers = undefined) {
+    SendResponse(code: number, data: object|string, headers = undefined) {
         if (!headers)
             headers = GetContentHeaders();
         this.res.writeHead(code, headers);

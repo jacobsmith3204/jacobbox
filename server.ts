@@ -50,21 +50,22 @@ const server = https.createServer(options, function handleServerRequests(req, re
 
 
 
-server.listen(PORT, () => {
+server.listen(PORT, function InitialiseServer() {
     console.log(`Server running at https://localhost:${PORT}`);
     // adds contexts to handle the different request types. 
     contexts["/"] = new FileHandler();
-    AddGamesFromFileSystemToContexts(); 
+    contexts["/findGame"] = new ServerHandler();
+    AddGamesFromFileSystemToContexts();
 
     // !!TEMPORARY!! adds a gameroom for demo purposes till a test server is up and running
-    GAME_ROOMS.set("1234", new GameRoom("1234", null));
+    GAME_ROOMS.set("1234", new GameRoom("1234", null, "demo_game"));
     console.log(GAME_ROOMS);
 });
 
 
 
 // 
-function AddGamesFromFileSystemToContexts(){
+function AddGamesFromFileSystemToContexts() {
     RequestListOfFilesInDir(path.join(__dirname, "games")).then(
         games => {
             games.forEach(name => { contexts[`/${name}`] = new GameHandler(name); });
@@ -81,74 +82,12 @@ function AddGamesFromFileSystemToContexts(){
         }
     }
 }
+
 console.log("Started file server");
 
 
 
-
-
-// server upgrade request handles the transformation of a tcp/http connection to a websocket connection 
-server.on('upgrade', (request: IncomingMessage, socket: Stream.Duplex, headers: Buffer) => {
-
-    console.log(`upgrading \n`, request.headers, request.url);
-
-
-    // if not directed to the correct /socket address when creating a websocket (it really wouldn't matter though) 
-    if (request.method.toUpperCase() != "GET" || request.url != "/socket") {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-    }
-    else {
-        // adds some event listeners 
-        socket.on('error', () => { console.error("socket: error upgrading") });
-        // on data is handled then piped back through to on message. 
-        socket.on('data', (data) => handleSocketData(socket, data));
-
-        // the first message will be parsed by this once then and replaced with a new on message after handling the initialisation request. 
-        socket.on('message', (message) => {
-            console.log("socket recieved first message", message, "parsing to json");
-            const data = JSON.parse(message);
-            HandleWebsocketInitialisationRequest(socket, data['type'], data['message']);
-        });
-
-        console.log("trying to upgrade to websocket...");
-        UpgradeToWebSocket(socket, request);
-
-    }
-});
-
-function HandleWebsocketInitialisationRequest(socket, type, message) {
-    socket.removeAllListeners('message'); // should remove the onMessage handler so we can reasign them later depending on the . 
-    switch (type) {
-        case "serverInitialisation":
-            // 
-            const gameRoom = GameRoom.CreateNew(socket, message); 
-            socket.on('message', (message) => { 
-                var data = JSON.parse(message);  
-                HandleServerMessage(gameRoom, data["type"], data);
-            });
-            break;
-        case "clientInitialisation":
-            // 
-            const gameClient = GameClient.CreateNew(socket, message)
-            socket.on('message', (message) => { 
-                //console.log(`type ${type}, ${message} `);
-                var data = JSON.parse(message);  
-                HandleClientMessage(gameClient, data["type"], data);
-            });
-            break;
-    }
-}
-
-
-
-console.log("added websocket upgrade request");
-
-
-
-
-
+// HTTP HANDLERS
 
 // the simplified http file server, on a get request finds the file 
 // (access limited to the website_file_dir, with access to all the subfiles via their path in the request url)
@@ -164,6 +103,16 @@ class FileHandler extends BaseHandler {
             filePath = path.join(WEBSITE_FILE_DIR, client.url.pathname);
         }
         client.SendFile(filePath);
+    }
+}
+
+class ServerHandler extends BaseHandler {
+    HandlePost(client: TcpClient): void {
+        console.log(`server handler handling request ${client.req.method}`);
+
+        const data = client.data;
+        const gameRoom = GameRoom.Find(data["gameCode"]);
+        client.SendResponse(200, JSON.stringify({ gameType: gameRoom.gameType }));
     }
 }
 
@@ -205,16 +154,18 @@ class GameHandler extends BaseHandler {
 
 
 
+// room and class setup
 
 class GameRoom {
     id;
     clients: Map<String, GameClient> = new Map<String, GameClient>();
     socket;
     setupRequest;
-    constructor(id, socket) {
+    gameType;
+    constructor(id, socket, gameType) {
         this.id = id;
         this.socket = socket;
-        this.setupRequest;
+        this.gameType = gameType;
     }
 
     AddUser(client: GameClient) {
@@ -224,30 +175,30 @@ class GameRoom {
         this.clients.delete(client.id);
     }
 
-    static CreateNew(socket, request: object) : GameRoom{
+    static CreateNew(socket, request: object): GameRoom {
         // client
-        const gameRoom = new GameRoom(NEXT_GAME_ID++, socket);
+        const gameRoom = new GameRoom(NEXT_GAME_ID++, socket, request["gameType"]);
         gameRoom.setupRequest = request;
         GAME_ROOMS.set(gameRoom.id, gameRoom);
-        return gameRoom; 
+        return gameRoom;
     }
-    static Find(gameID: string) :GameRoom {
+    static Find(gameID: string): GameRoom {
         const room = GAME_ROOMS.get(gameID);
-        console.log("searching for room: " ,  gameID , " room " , room ); 
-        return room; 
+        console.log("searching for room: ", gameID, " room ", room);
+        return room;
     }
 
-    SendMessageToAllClients(message){
-        this.clients.forEach((client: GameClient) => this.SendMessageToClient(client , message));
+    SendMessageToAllClients(message) {
+        this.clients.forEach((client: GameClient) => this.SendMessageToClient(client, message));
     }
-    SendMessageToClient(client:GameClient, message ){
+    SendMessageToClient(client: GameClient, message) {
         client.SendMessage(message);
     }
-    SendMessage(message){
+    SendMessage(message) {
         // sends a message back to the server
-        if(this.socket != null)
-            this.socket.sendText(message);              
-        else 
+        if (this.socket != null)
+            this.socket.sendText(message);
+        else
             console.log(`socket not setup`);
     }
 }
@@ -256,13 +207,13 @@ class GameRoom {
 class GameClient {
     name: string;
     gameID: string;
-    id: string; 
+    id: string;
     game_room: GameRoom;
     socket;
 
     constructor(id, socket) {
         this.socket = socket;
-        this.id = id; 
+        this.id = id;
     }
 
     static CreateNew(socket, request: object) {
@@ -274,7 +225,7 @@ class GameClient {
         // sets game id 
         gameClient.gameID = request["gameID"];
         // finds the right room
-        const game =  GameRoom.Find(gameClient.gameID);
+        const game = GameRoom.Find(gameClient.gameID);
         if (gameClient.gameID && game)
             gameClient.JoinRoom(game);
         else
@@ -295,39 +246,102 @@ class GameClient {
     LeaveRoom() {
         this.game_room.RemoveUser(this);
     }
-    
-    SendMessageToServer(message){
+
+    SendMessageToServer(message) {
         // sends message to this game rooms server
         this.game_room.SendMessage(message);
     }
-    SendMessage(message ){
+    SendMessage(message) {
         // sends a message back to this client
-        if(this.socket != null)
+        if (this.socket != null)
             this.socket.sendText(message);
-        else 
+        else
             console.log(`socket not setup`);
     }
 }
 
+
+
+// WEBSOCKET STUFF
+
+
+// server upgrade request handles the transformation of a tcp/http connection to a websocket connection 
+server.on('upgrade', (request: IncomingMessage, socket: Stream.Duplex, headers: Buffer) => {
+
+    console.log(`upgrading \n`, request.headers, request.url);
+
+
+    // if not directed to the correct /socket address when creating a websocket (it really wouldn't matter though) 
+    if (request.method.toUpperCase() != "GET" || request.url != "/socket") {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+    }
+    else {
+        // adds some event listeners 
+        socket.on('error', () => { console.error("socket: error upgrading") });
+        // on data is handled then piped back through to on message. 
+        socket.on('data', (data) => handleSocketData(socket, data));
+
+        // the first message will be parsed by this once then and replaced with a new on message after handling the initialisation request. 
+        socket.on('message', (message) => {
+            console.log("socket recieved first message", message, "parsing to json");
+            const data = JSON.parse(message);
+            HandleWebsocketInitialisationRequest(socket, data['type'], data['message']);
+        });
+
+        console.log("trying to upgrade to websocket...");
+        UpgradeToWebSocket(socket, request);
+
+    }
+});
+console.log("added websocket upgrade request");
+
+
+
+
+// updates the socket.onlistener to one depending on the first response. 
+function HandleWebsocketInitialisationRequest(socket, type, message) {
+    socket.removeAllListeners('message'); // should remove the onMessage handler so we can reasign them later depending on the . 
+    switch (type) {
+        case "serverInitialisation":
+            const gameRoom = GameRoom.CreateNew(socket, message);
+            // adds new on message function. 
+            socket.on('message', (message) => {
+                var data = JSON.parse(message);
+                HandleServerMessage(gameRoom, data["type"], data);
+            });
+            break;
+        case "clientInitialisation":
+            const gameClient = GameClient.CreateNew(socket, message);
+            // adds new on message function.
+            socket.on('message', (message) => {
+                //console.log(`type ${type}, ${message} `);
+                var data = JSON.parse(message);
+                HandleClientMessage(gameClient, data["type"], data);
+            });
+            break;
+    }
+}
 
 // HANDLE -- SERVER -- MESSAGES  
 function HandleServerMessage(gameRoom: GameRoom, type: string, data: any) {
     const message = data["message"];
     console.log(`server recieved '${type}' message: ${message} `);
 
-    switch(type){
-        case "toClient": 
+    switch (type) {
+        case "toClient":
             // sends a message to a particular client
-            gameRoom.SendMessageToClient(this.clients.get(data["clientID"]),data);
-        break; 
-        case "toAllClients": 
+            gameRoom.SendMessageToClient(this.clients.get(data["clientID"]), data);
+            break;
+        case "toAllClients":
             // sends a message to a particular client
             gameRoom.SendMessageToAllClients(message);
-        break; 
+            break;
 
-        default:         
+        default:
             gameRoom.SendMessage(`server request message need format {type: "...", message:"..." }`);
-        break; 
+            break;
     }
 }
 
@@ -335,17 +349,19 @@ function HandleServerMessage(gameRoom: GameRoom, type: string, data: any) {
 function HandleClientMessage(gameClient: GameClient, type: string, data: any) {
     const message = data["message"];
     console.log(`client recieved '${type}' message: ${message}`);
-    
+
     // switch statment for all the request types 
-    switch(type){
-        case "toServer": 
+    switch (type) {
+        case "toServer":
             // relays a message from the client to the server
             gameClient.SendMessageToServer(message);
-        break; 
+            break;
 
-        default:        
+        default:
             // sends a reminder to send message in this format
             gameClient.SendMessage(`client request message need format {type: "...", message:"..." }`);
-        break; 
+            break;
     }
 }
+
+
