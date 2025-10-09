@@ -81,8 +81,6 @@ function AddGamesFromFileSystemToContexts(){
         }
     }
 }
-
-
 console.log("Started file server");
 
 
