@@ -23,8 +23,6 @@ const GAME_CLIENT_FILE_DIR = path.join(__dirname, 'games'); // Directory to stor
 const SERVER_CERT_DIR = process.env.SERVER_CERT_DIR; // Directory to stored game files
 const SERVER_KEY_DIR = process.env.SERVER_KEY_DIR; // Directory to stored game files
 
-var NEXT_PLAYER_ID = 0;
-var NEXT_GAME_ID = 0;
 var GAME_ROOMS: Map<String, GameRoom> = new Map<String, GameRoom>();
 
 
@@ -58,7 +56,7 @@ server.listen(PORT, function InitialiseServer() {
     AddGamesFromFileSystemToContexts();
 
     // !!TEMPORARY!! adds a gameroom for demo purposes till a test server is up and running
-    GAME_ROOMS.set("1234", new GameRoom("1234", null, "demo_game"));
+    //GAME_ROOMS.set("1234", new GameRoom("1234", null, "demo_game"));
     console.log(GAME_ROOMS);
 });
 
@@ -152,50 +150,34 @@ class GameHandler extends BaseHandler {
 
 
 
+function generateRandomString(length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * chars.length);
+        result += chars[randomIndex];
+    }
+    return result;
+}
+
 
 
 // room and class setup
-
-class GameRoom {
-    id;
-    clients: Map<String, GameClient> = new Map<String, GameClient>();
+class GameBase{
     socket;
-    setupRequest;
-    gameType;
-    constructor(id, socket, gameType) {
-        this.id = id;
-        this.socket = socket;
-        this.gameType = gameType;
-    }
-
-    AddUser(client: GameClient) {
-        this.clients.set("", client);
-    }
-    RemoveUser(client: GameClient) {
-        this.clients.delete(client.id);
-    }
-
-    static CreateNew(socket, request: object): GameRoom {
-        // client
-        const gameRoom = new GameRoom(NEXT_GAME_ID++, socket, request["gameType"]);
-        gameRoom.setupRequest = request;
-        GAME_ROOMS.set(gameRoom.id, gameRoom);
-        return gameRoom;
-    }
-    static Find(gameID: string): GameRoom {
-        const room = GAME_ROOMS.get(gameID);
-        console.log("searching for room: ", gameID, " room ", room);
-        return room;
-    }
-
-    SendMessageToAllClients(message) {
-        this.clients.forEach((client: GameClient) => this.SendMessageToClient(client, message));
-    }
-    SendMessageToClient(client: GameClient, message) {
-        client.SendMessage(message);
-    }
     SendMessage(message) {
-        // sends a message back to the server
+
+          if(typeof(message) != typeof(String))
+        {
+            try {
+                message = JSON.stringify(message);
+            }
+            catch (e){
+                console.log("invalid message format",e);
+            }
+        }
+        // sends a message back to this client
         if (this.socket != null)
             this.socket.sendText(message);
         else
@@ -204,26 +186,84 @@ class GameRoom {
 }
 
 
-class GameClient {
+class GameRoom extends GameBase{
+    id;
+    clients: Map<String, GameClient> = new Map<String, GameClient>();
+    setupRequest;
+    gameType;
+    constructor(id, socket, gameType) {
+        super(); 
+        this.id = id;
+        this.socket = socket;
+        this.gameType = gameType;
+        console.log(`created game server ${this.gameType}: ${this.id}`);
+    }
+
+    AddUser(client: GameClient) {
+        // gets a unique unused gameid 
+        var newID;
+        while (!newID || this.clients.has(newID)) {
+            newID = generateRandomString(4);
+        }
+        client.id = newID;
+        this.clients.set(newID, client);
+    }
+
+    RemoveUser(client: GameClient) {
+        this.clients.delete(client.id);
+    }
+
+    static CreateNew(socket, request: object): GameRoom {
+
+        // gets a unique unused gameid 
+        var newID;
+        while (!newID || GAME_ROOMS.has(newID)) {
+            newID = generateRandomString(4);
+        }
+        // 
+        const gameRoom = new GameRoom(newID, socket, request["gameType"]);
+        gameRoom.setupRequest = request;
+        GAME_ROOMS.set(gameRoom.id, gameRoom);
+
+        return gameRoom;
+    }
+    static Find(gameID: string): GameRoom {
+        const room = GAME_ROOMS.get(gameID);
+        console.log("searching for room: ", gameID, " room ", room ? "exists" : "doesn't exist");
+        return room;
+    }
+
+    SendMessageToAllClients(message) {
+        this.clients.forEach((client: GameClient) => this.SendMessageToClient(client, message));
+    }
+    SendMessageToClient(client: GameClient, message) {
+        client.SendMessage(message);
+    } 
+}
+
+class GameClient extends GameBase {
     name: string;
     gameID: string;
     id: string;
     game_room: GameRoom;
-    socket;
 
-    constructor(id, socket) {
+
+    constructor(socket) {
+        super();
         this.socket = socket;
-        this.id = id;
+        console.log(`created game client`);
     }
 
     static CreateNew(socket, request: object) {
-        // fetch game id
-        const gameClient = new GameClient(NEXT_PLAYER_ID++, socket);
 
-        // sets name 
-        gameClient.SetName(request["name"]);
+        // gets a unique unused gameid
+        const gameClient = new GameClient(socket);
+
         // sets game id 
         gameClient.gameID = request["gameID"];
+        // sets name 
+        gameClient.SetName(request["name"]);
+
         // finds the right room
         const game = GameRoom.Find(gameClient.gameID);
         if (gameClient.gameID && game)
@@ -242,7 +282,11 @@ class GameClient {
     JoinRoom(room: GameRoom) {
         this.game_room = room;
         this.game_room.AddUser(this);
+        
+        console.log(`added client ${this.id} for ${this.game_room.gameType}: ${this.game_room.id}`);
+        this.SendMessageToServer({type:"join", message: "added client to this room"});
     }
+
     LeaveRoom() {
         this.game_room.RemoveUser(this);
     }
@@ -251,13 +295,7 @@ class GameClient {
         // sends message to this game rooms server
         this.game_room.SendMessage(message);
     }
-    SendMessage(message) {
-        // sends a message back to this client
-        if (this.socket != null)
-            this.socket.sendText(message);
-        else
-            console.log(`socket not setup`);
-    }
+
 }
 
 
@@ -303,26 +341,47 @@ console.log("added websocket upgrade request");
 // updates the socket.onlistener to one depending on the first response. 
 function HandleWebsocketInitialisationRequest(socket, type, message) {
     socket.removeAllListeners('message'); // should remove the onMessage handler so we can reasign them later depending on the . 
+    console.log(`initialising websocket... ${type}`);
     switch (type) {
         case "serverInitialisation":
-            const gameRoom = GameRoom.CreateNew(socket, message);
-            // adds new on message function. 
-            socket.on('message', (message) => {
-                var data = JSON.parse(message);
-                HandleServerMessage(gameRoom, data["type"], data);
-            });
+            NewServer(socket, message);
             break;
         case "clientInitialisation":
-            const gameClient = GameClient.CreateNew(socket, message);
-            // adds new on message function.
-            socket.on('message', (message) => {
-                //console.log(`type ${type}, ${message} `);
-                var data = JSON.parse(message);
-                HandleClientMessage(gameClient, data["type"], data);
-            });
+            NewClient(socket, message); 
             break;
     }
 }
+
+function NewServer(socket, message) {
+    const gameRoom = GameRoom.CreateNew(socket, message);
+    // adds new on message function. 
+    socket.on('message', (message) => {
+        try {
+            var data = JSON.parse(message);
+            HandleServerMessage(gameRoom, data["type"], data);
+        }
+        catch (e) {
+            console.error(`socket message error: couldnt parse to json  ${message} `, e);
+        }
+    });
+    // replies back to the server, with the game id. 
+    socket.sendText(JSON.stringify({ type: "initialisation", message: { gameID: gameRoom.id } }));
+}
+
+function NewClient(socket, message) {
+    const gameClient = GameClient.CreateNew(socket, message);
+    // adds new on message function.
+    socket.on('message', (message) => {
+        try {
+            var data = JSON.parse(message);
+            HandleClientMessage(gameClient, data["type"], data);
+        }
+        catch (e) {
+            console.error(`socket message error: couldnt parse to json  ${message} `, e);
+        }
+    });
+}
+
 
 // HANDLE -- SERVER -- MESSAGES  
 function HandleServerMessage(gameRoom: GameRoom, type: string, data: any) {

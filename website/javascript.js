@@ -35,6 +35,9 @@ class SigninForm {
     if (this.ValidateCode(gameCode)) {
       this.OnMessage("attempting login");
 
+      localStorage.setItem("gameID", gameCode);
+      localStorage.setItem("username", "jacob");
+
       // sends a request to the server, should return with info about the game type etc
       var req = new XMLHttpRequest();
       req.addEventListener("load", load.bind(this));
