@@ -30,13 +30,13 @@ class SigninForm {
   SubmitGameCode(e) {
     e.preventDefault(); // Prevent form submission
     const gameCode = this.GetCode();
-
+    const username = this.GetUserName(); 
 
     if (this.ValidateCode(gameCode)) {
       this.OnMessage("attempting login");
 
       localStorage.setItem("gameID", gameCode);
-      localStorage.setItem("username", "jacob");
+      localStorage.setItem("username", username);
 
       // sends a request to the server, should return with info about the game type etc
       var req = new XMLHttpRequest();

@@ -11,18 +11,22 @@
 
 <body>
     <div class="game-container">
-        <h1>your in</h1>
+        <h1 id="globalMessage">your in</h1> <!-- will update when a game starts, etc-->
+
+
+        <div id="users">
+            
+
+        </div>
+
+
         <form id="gameForm">
-            <label for="playerName">Your Name</label>
-            <input type="text" id="playerName" placeholder="Player 1" required />
+            <!--label for="playerName"> </label-->
+            <input type="text" id="userInput" placeholder="num, fizz, buzz or fizzbuzz" required />
 
-            <!--div class="options">
-                <label><input type="checkbox" id="audioToggle" /> Enable Funny Sounds</label><br>
-                <label><input type="checkbox" id="colorMode" /> Dark Mode</label>
-            </div-->
 
-            <button type="submit">Confirm Name</button>
-            <div class="message" id="message"></div>
+            <button type="submit">Done</button>
+            <div class="message" id="message"></div> <!-- used for debugging -->
         </form>
     </div>
 

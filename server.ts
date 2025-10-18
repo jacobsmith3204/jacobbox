@@ -284,15 +284,15 @@ class GameClient extends GameBase {
         this.game_room.AddUser(this);
         
         console.log(`added client ${this.id} for ${this.game_room.gameType}: ${this.game_room.id}`);
-        this.SendMessageToServer({type:"join", message: "added client to this room"});
+        this.SendMessageToHost({type:"join", message: {name: this.name, id: this.id }});
     }
 
     LeaveRoom() {
         this.game_room.RemoveUser(this);
     }
 
-    SendMessageToServer(message) {
-        // sends message to this game rooms server
+    SendMessageToHost(message) {
+        // sends message to this game rooms host
         this.game_room.SendMessage(message);
     }
 
@@ -343,8 +343,8 @@ function HandleWebsocketInitialisationRequest(socket, type, message) {
     socket.removeAllListeners('message'); // should remove the onMessage handler so we can reasign them later depending on the . 
     console.log(`initialising websocket... ${type}`);
     switch (type) {
-        case "serverInitialisation":
-            NewServer(socket, message);
+        case "hostInitialisation":
+            NewHost(socket, message);
             break;
         case "clientInitialisation":
             NewClient(socket, message); 
@@ -352,13 +352,13 @@ function HandleWebsocketInitialisationRequest(socket, type, message) {
     }
 }
 
-function NewServer(socket, message) {
+function NewHost(socket, message) {
     const gameRoom = GameRoom.CreateNew(socket, message);
     // adds new on message function. 
     socket.on('message', (message) => {
         try {
             var data = JSON.parse(message);
-            HandleServerMessage(gameRoom, data["type"], data);
+            HandleHostMessage(gameRoom, data["type"], data);
         }
         catch (e) {
             console.error(`socket message error: couldnt parse to json  ${message} `, e);
@@ -383,15 +383,15 @@ function NewClient(socket, message) {
 }
 
 
-// HANDLE -- SERVER -- MESSAGES  
-function HandleServerMessage(gameRoom: GameRoom, type: string, data: any) {
+// HANDLE -- HOST -- MESSAGES  
+function HandleHostMessage(gameRoom: GameRoom, type: string, data: any) {
     const message = data["message"];
-    console.log(`server recieved '${type}' message: ${message} `);
+    console.log(`host recieved '${type}' message: ${message} `);
 
     switch (type) {
         case "toClient":
             // sends a message to a particular client
-            gameRoom.SendMessageToClient(this.clients.get(data["clientID"]), data);
+            gameRoom.SendMessageToClient(this.clients.get(data["clientID"]), data["message"]);
             break;
         case "toAllClients":
             // sends a message to a particular client
@@ -399,7 +399,7 @@ function HandleServerMessage(gameRoom: GameRoom, type: string, data: any) {
             break;
 
         default:
-            gameRoom.SendMessage(`server request message need format {type: "...", message:"..." }`);
+            gameRoom.SendMessage(`host request message need format {type: "...", message:"..." }`);
             break;
     }
 }
@@ -411,9 +411,9 @@ function HandleClientMessage(gameClient: GameClient, type: string, data: any) {
 
     // switch statment for all the request types 
     switch (type) {
-        case "toServer":
+        case "toHost":
             // relays a message from the client to the server
-            gameClient.SendMessageToServer(message);
+            gameClient.SendMessageToHost(message);
             break;
 
         default:

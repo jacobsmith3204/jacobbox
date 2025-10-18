@@ -3,7 +3,7 @@ const server_url = 'wss://localhost:8000/socket';
 const ws = new WebSocket(server_url);
 
 
-
+type UserId = string;
 
 // Handle new connections
 ws.addEventListener('open', (e) => {
@@ -12,7 +12,7 @@ ws.addEventListener('open', (e) => {
 
     
 
-    ws.send(JSON.stringify({ type: "serverInitialisation", message: FizzBuzzGame.initialisationMessage }));
+    ws.send(JSON.stringify({ type: "hostInitialisation", message: FizzBuzzGame.initialisationMessage }));
 
 });
 
@@ -24,14 +24,18 @@ ws.addEventListener('message', event => {
     try {
         const data = JSON.parse(event.data); 
         const type = data["type"]; 
-        
+        //{type:"", message: {obj}}
         switch(type){
             case "initialisation":
                 console.log("initilisation", data["message"]);
 
             break; 
             case "join": 
+                // name: , id:
                 console.log("join" ,data["message"]);
+                game.createUser(data["message"]["id"] , data["message"]["name"])
+            case "guess":
+                game.processGuess(data["message"]["user"],data["message"]["guess"])
             break; 
         }
 
@@ -54,7 +58,36 @@ ws.addEventListener('error', error => {
 });
 
 
+type WSMessage<T> = {
+    type: "toAllClients" | "toClient",
+    clientID?: UserId,
+    message: T
+}
 
+// TODO: Turn these into a library so that we can use them wherever
+function broadcastMessage<T>(ws: WebSocket, message: T){
+    ws.send(JSON.stringify({
+        message: message,
+        type: "toAllClients"
+        
+    } as WSMessage<T>));
+}
+
+function sendDirectMessage<T>(ws: WebSocket,userId: UserId, message: T){
+    ws.send(JSON.stringify({
+        message: message,
+        type: "toClient",
+        clientID: userId
+    } as WSMessage<T>));
+}
+
+enum MessageTypes {
+    yourGuessCorrect= "yourGuessCorrect",
+    yourGuessIncorrect= "yourGuessIncorrect",
+    correctGuess= "correctGuess",
+    incorrectGuess= "incorrectGuess",
+    notYourTurn= "notYourTurn"
+}
 
 
 class FizzBuzzGame{
@@ -74,20 +107,44 @@ class FizzBuzzGame{
 
  
 
-    InitialiseNewGame(){
+    initialiseNewGame(){
         this.turnNum = 1; 
     }
 
-    CreateUser(id, name){
+    createUser(id: UserId, name : string){
         this.users.set(id, new User(id, name));
     }
+    
+    processGuess(userId: UserId , guess: "string"){
+        if (userId !== this.currentTurnUser()){
+            // TODO: send a message saying "WAIT YOUR TURN"
+            sendDirectMessage(this.socket, userId, {type: MessageTypes.notYourTurn});
+            return; // not this users turn
+        }
+        let correctGuess = this.validateGuess(userId, guess);
+        if (correctGuess){
+            sendDirectMessage(this.socket, userId, {type: MessageTypes.yourGuessCorrect, guess: guess});
+            broadcastMessage(this.socket, {type: MessageTypes.correctGuess, userId: userId, guess: guess});
+        } else {
+            sendDirectMessage(this.socket, userId, {type: MessageTypes.yourGuessIncorrect, guess: guess});
+            broadcastMessage(this.socket, {type: MessageTypes.incorrectGuess, userId: userId, guess: guess});
+            
+        }
+    }
 
-    ValidateTurn(user, message){   
-        // check its its the users turn
-        const keysArray = Array.from(this.users.keys());
-        if(keysArray.indexOf(user) != this.turnNum % keysArray.length){
-            return false; 
-        } 
+    sendCorrect(userId: UserId){
+        this.socket.send(JSON.stringify({type: "", }));
+    }
+
+    currentTurnUser() : UserId{
+        /** 
+         * Returns the userId of the user whose turn it is
+         */
+        return Array.from(this.users.keys())[this.turnNum % this.users.size] as string;
+    }
+
+    validateGuess(user, message){   
+        
         
         // check if the message was correct
         if(this.turnNum % 5 && this.turnNum % 3)
