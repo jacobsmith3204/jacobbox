@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ItemRelativePath>$(MSBuildProjectDirectory)\index.html</ItemRelativePath>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="index.html" CopyToOutputDirectory="PreserveNewest" />
+    <!--Compile Include="Skill.cs"> 
+    <Compile Include="Stance.cs">
+    <Compile Include="IEntity.cs"> 
+    <Compile Include="TcpServer.cs"/-->
+  </ItemGroup>
+</Project>

@@ -1,43 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
+    <head>
+        <base href="/css_animation_tool/client/">
+        <link href="stylesheet.css" rel="stylesheet">
+        <script src="javascript.js"></script>
+        
+    </head>
+    <body>
+        <h1> CSS ANIMATION TOOL </h1>
+    
+        
+        <!--div id="display">
+            <img src="speachbubble.svg" width="100px" height=" 50px">
+  
 
-<head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        </div-->
 
-    <style>
-        div {
-            width: 500px;
-            height: 400px;
-            border: 2px solid black;
-            position: relative;
-        }
+         <canvas id="display"></canvas>
 
-        video {
-            width: 500px;
-            height: 400px;
-            object-fit: cover;
-        }
-    </style>
 
-    <script src="javascript.js"></script>
-</head>
+        <div id="timeline">
 
-<body style=" background-color: antiquewhite;">
-    <input placeholder="hello world" id="text" /> <input type="button" value="send to server"
-        onclick="SendToServer()" />
-        <br /> <br />
-        <div>
-            <video id="vid"></video>
         </div>
-        <br />
-        <button id="but" autoplay>
-            Open WebCam
-        </button>
-        <br />
-        <iframe src="BUILD/index.html" width="960" height="700" style="background-color: white;"></iframe>
 
-        <script>Start();</script>
-</body>
+        <script>
+            var display = new Display(document.getElementById("display"))
+
+        </script>
+    </body>
 </html>

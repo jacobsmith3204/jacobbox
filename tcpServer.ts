@@ -72,6 +72,7 @@ export function GetContentHeaders(target = ""): object {
         case ".css": return { 'Content-Type': 'text/css' };
         case ".ico": return { 'Content-Type': 'image' };
         case ".png": return { 'Content-Type': 'image/png' };
+        case ".svg": return { 'Content-Type': 'image/svg+xml' , "Vary": "Accept-Encoding" };
         case ".jpg": return { 'Content-Type': 'image/jpg' };
         case ".webp": return { 'Content-Type': 'image/webp' };
         case ".js": return { 'Content-Type': 'application/javascript' };

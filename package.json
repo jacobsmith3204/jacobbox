@@ -15,7 +15,9 @@
   "type": "commonjs",
   "main": "server.ts",
   "scripts": {
-    "start": "npx vite-node server.ts"
+    "start": "npx vite-node server.ts", 
+    "host" : "npx vite-node games/demo_game/server/demo_game_server.ts", 
+    "hostC#" : "dotnet run --project csFiles/server.csproj"
   },
   "devDependencies": {
     "@types/node": "^24.5.2"

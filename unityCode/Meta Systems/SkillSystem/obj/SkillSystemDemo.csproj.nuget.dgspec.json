@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Projects\\Jacobbox\\csFiles\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj": {}
+    "D:\\Projects\\Jacobbox\\unityCode\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj": {}
   },
   "projects": {
-    "D:\\Projects\\Jacobbox\\csFiles\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj": {
+    "D:\\Projects\\Jacobbox\\unityCode\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Projects\\Jacobbox\\csFiles\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj",
+        "projectUniqueName": "D:\\Projects\\Jacobbox\\unityCode\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj",
         "projectName": "SkillSystemDemo",
-        "projectPath": "D:\\Projects\\Jacobbox\\csFiles\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj",
+        "projectPath": "D:\\Projects\\Jacobbox\\unityCode\\Meta Systems\\SkillSystem\\SkillSystemDemo.csproj",
         "packagesPath": "C:\\Users\\Jacob\\.nuget\\packages\\",
-        "outputPath": "D:\\Projects\\Jacobbox\\csFiles\\Meta Systems\\SkillSystem\\obj\\",
+        "outputPath": "D:\\Projects\\Jacobbox\\unityCode\\Meta Systems\\SkillSystem\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -1,0 +1,16 @@
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.GeneratedMSBuildEditorConfig.editorconfig
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.AssemblyInfoInputs.cache
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.AssemblyInfo.cs
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.csproj.CoreCompileInputs.cache
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.sourcelink.json
+D:\Projects\Jacobbox\csFiles\bin\Debug\net9.0\index.html
+D:\Projects\Jacobbox\csFiles\bin\Debug\net9.0\server.exe
+D:\Projects\Jacobbox\csFiles\bin\Debug\net9.0\server.deps.json
+D:\Projects\Jacobbox\csFiles\bin\Debug\net9.0\server.runtimeconfig.json
+D:\Projects\Jacobbox\csFiles\bin\Debug\net9.0\server.dll
+D:\Projects\Jacobbox\csFiles\bin\Debug\net9.0\server.pdb
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.dll
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\refint\server.dll
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.pdb
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\server.genruntimeconfig.cache
+D:\Projects\Jacobbox\csFiles\obj\Debug\net9.0\ref\server.dll
