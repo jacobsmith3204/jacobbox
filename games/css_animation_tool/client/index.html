@@ -1,31 +1,66 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <base href="/css_animation_tool/client/">
-        <link href="stylesheet.css" rel="stylesheet">
-        <script src="javascript.js"></script>
-        
-    </head>
-    <body>
-        <h1> CSS ANIMATION TOOL </h1>
-    
-        
-        <!--div id="display">
+
+<head>
+    <base href="/css_animation_tool/client/">
+    <link href="stylesheet.css" rel="stylesheet">
+
+
+    <script src="input.js"></script>
+    <script src="animationExporter.js"></script>
+
+    <script src="renderer.js"></script>
+
+    <script src="drawables.js"></script>
+
+</head>
+
+<body>
+    <h1> CSS ANIMATION TOOL </h1>
+
+
+    <!--div id="display">
             <img src="speachbubble.svg" width="100px" height=" 50px">
   
 
         </div-->
 
-         <canvas id="display"></canvas>
+    <canvas id="display"></canvas>
 
 
-        <div id="timeline">
+    <canvas id="timeline"> </canvas>
 
-        </div>
+    <div tabindex="0" id="object"></div>
 
-        <script>
-            var display = new Display(document.getElementById("display"))
+    <script>
+        //var display = new Display(document.getElementById("display"));
 
-        </script>
-    </body>
+        var renderer = new Timeline(document.getElementById("timeline"));
+
+
+        // adds some initial elements
+
+        //renderer.addElement(new sinBar(this.canvas));
+
+        var node1 = new anchor(20, 20);
+        var node2 = new anchor(210, 140);
+        var handle1 = new handle(110, 150, node1);
+        var handle2 = new handle(180, 10, node2);
+        var curve1 = new curve(node1, handle1, handle2, node2, `rgba(204, 25, 25, 1)`);
+
+
+        renderer.addElements([handle1, handle2  , node1 , node2 , curve1]);
+
+
+
+        
+        
+
+        svg.loadImage("speachbubble.svg", ((el) => renderer.addElement(el)));
+
+
+
+    </script>
+</body>
+
 </html>

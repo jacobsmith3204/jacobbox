@@ -27,3 +27,102 @@ body{
     background:
     repeating-linear-gradient(90deg,  transparent 0px, rgba(0, 0, 0, 0.13) 2px, transparent 0px, transparent var(--timelineXscale));
 }
+
+#object{ 
+    /*animation: 
+        animate1 2s cubic-bezier(.31,.92,.75,.08) infinite,
+        animate2 2s ease infinite 1s;*/
+
+    display: block; 
+    position: absolute;
+    width:  10em;
+    aspect-ratio: 1; 
+    background-color: red;
+}
+
+/*
+@keyframes animate1 {
+  0%   {transform: translateX(0) translateY(0); }
+  100% {transform: translateX(10em) translateY(10em);}
+}
+
+@keyframes animate2 {
+  0%   {transform: translateX(6em) translateY(3em); }
+  100% {transform: translateX(16em) translateY(10em);}
+}*/
+
+/*@keyframes animate1 {
+  0%, 50% { transform: translateX(0); }
+  25% { transform: translateX(10em) translateY(10rem) ; }
+  100% { transform: translateX(0); }
+}
+
+@keyframes animate2 {
+  0%, 50% { opacity: 1; }
+  75% { opacity: 0; }
+  100% { opacity: 1; }
+}*/
+
+
+@property --tx {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --ty {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+@property --r {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 0deg;
+}
+
+
+@keyframes moveX {
+  from {--tx: 0px}
+  to   { --tx: 100px; }
+}
+
+@keyframes moveY {
+  from {--ty: 0px}
+  to   { --ty: 50px; }
+}
+
+@keyframes moveX2 {
+  to   { --tx: 150px; }
+}
+
+@keyframes moveY2 {
+  to   { --ty: 100px; }
+}
+
+@keyframes rotate {
+  to   { --r: 180deg; }
+}
+
+@keyframes moveX3 {
+    to { --tx: 180px; }
+}
+
+#object {
+  /* Combine both transforms from vars */
+  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r)); 
+  /* Run both animations together */
+  animation: 
+    moveX 2s cubic-bezier(.31, .92, .75, .08) forwards,
+    moveY 2s ease-in-out forwards , 
+    moveX2 2s cubic-bezier(.31, .92, .75, .08) 2s forwards,
+    moveY2 2s ease-in-out  2s forwards, 
+    rotate 2s ease-in-out 2s forwards, 
+    moveX3 0.5s ease-out 4s forwards; 
+}
+
+#object:focus {  
+    animation: normal;
+
+    animation: moveX 2s ease-out forwards !important; 
+}
