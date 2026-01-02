@@ -1,4 +1,20 @@
-class Input {
+export class Input {
+    constructor( renderer) {
+
+        const canvas = renderer.canvas;
+        const context = renderer;
+        const input = this; 
+
+        function handleEvent(event) { input.handleEvent(event, context); }
+
+        canvas.addEventListener('mousedown', handleEvent);
+        canvas.addEventListener('mousemove', handleEvent);
+        canvas.addEventListener('mouseleave', handleEvent);
+        canvas.addEventListener('mouseup', handleEvent);
+        canvas.addEventListener('contextmenu', handleEvent);
+        canvas.addEventListener('wheel', handleEvent);
+    }
+
 
     static mouseMove(event) {
         // only gets called if the pointer is inside.  
@@ -24,32 +40,32 @@ class Input {
                     event.preventDefault();
                     break;
                 case 'mousedown':
-                    console.log(event); // 
+                    //console.log(event); // 
                     var node = context.findNode(event);
-                    if(node){
+                    if (node) {
                         this.handleAnchorMovement(event, context);
                         this.handleHandleMovement(event, context);
                     }
                     else {
                         this.handleNavigation(event, context);
                     }
-                    break; 
-                    
+                    break;
+
                 case 'wheel':
                     this.handleZoom(event, context);
                     break; // since its one off return so it doesnt set context.state
 
-                case 'mousemove': 
+                case 'mousemove':
                     //console.log(event);
-                    var el = context.elements[0]; 
-                    
-                    // mouse position in canvas
-                    const [mx, my] = this.getMousePosition(event,context); 
+                    var el = context.elements[0];
 
-                    el.x = mx /context.scale;
-                    el.y = my /context.scale;
-                    
-                break; 
+                    // mouse position in canvas
+                    const [mx, my] = this.getMousePosition(event, context);
+
+                    el.x = mx / context.scale;
+                    el.y = my / context.scale;
+
+                    break;
                 default:
 
                     return;
@@ -58,35 +74,35 @@ class Input {
 
         if (context.state)
             context.state[event.type]?.bind(context)(event);
-        console.log("input context state", context.state);
+        //console.log("input context state", context.state);
     }
 
 
-    getMousePosition(event, context){
-        const x = (event.clientX- context.canvas.offsetLeft) - context.xpos();
-        const y = (event.clientY- context.canvas.offsetTop) - context.ypos();
-        return [x,y];
+    getMousePosition(event, context) {
+        const x = (event.clientX - context.canvas.offsetLeft) - context.xpos();
+        const y = (event.clientY - context.canvas.offsetTop) - context.ypos();
+        return [x, y];
     }
 
 
     handleZoom(event, context) {
 
-        console.log("Window scrolled!", event);
+        //console.log("Window scrolled!", event);
 
         // non-linear zoom.  
         var zoom = (event.wheelDelta) / (1000 + context.scale);
-        
+
         // gets the mouse position relative to the canvas position
-        const [mx,my] = this.getMousePosition(event,context);
-        
+        const [mx, my] = this.getMousePosition(event, context);
+
         // adjusts the zoom level
         context.scale += zoom;
 
         // change origin to center zoom on cursor 
-        context.originX -= (mx * zoom)/context.scale;
-        context.originY -= (my * zoom)/context.scale;
-        
-        console.log(context.originX, context.originY);
+        context.originX -= (mx * zoom) / context.scale;
+        context.originY -= (my * zoom) / context.scale;
+
+        //console.log(context.originX, context.originY);
     }
 
 

@@ -1,4 +1,7 @@
-class Renderer {
+import { Input } from "./input.js";
+
+
+export class Renderer {
     canvas;
     ctx;
     elements = [];
@@ -25,20 +28,7 @@ class Renderer {
         window.addEventListener('resize', (this.resizeCanvas).bind(this));
         window.requestAnimationFrame(this.renderLoop.bind(this));
 
-        // add input
-        const canvas = this.canvas;
-
-        const input = new Input();
-        const context = this;
-
-        function handleEvent(event) { input.handleEvent(event, context); }
-
-        canvas.addEventListener('mousedown', handleEvent);
-        canvas.addEventListener('mousemove', handleEvent);
-        canvas.addEventListener('mouseleave', handleEvent);
-        canvas.addEventListener('mouseup', handleEvent);
-        canvas.addEventListener('contextmenu', handleEvent);
-        canvas.addEventListener("wheel", handleEvent);
+        const input = new Input(this); // adds input
     }
 
     resizeCanvas() {
@@ -77,17 +67,15 @@ class Renderer {
     addElement(el) {
         this.elements.push(el);
     }
-
     findNode(event){
         
-
     }
 }
 
 
 
 
-class Timeline extends Renderer {
+export class TimelineRenderer extends Renderer {
 
     renderLoop() {
         this.ctx.resetTransform();
@@ -95,51 +83,23 @@ class Timeline extends Renderer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // allow world offset
-        const [x, y] = [this.xpos(), this.ypos()];
+        const [x, y, scale] = [this.xpos(), this.ypos(), this.scale];
+        
         //const y = this.ypos();
-        this.ctx.scale(this.scale, this.scale);
-        this.ctx.translate(x/this.scale, y/this.scale);// center canvas
+        this.ctx.scale(scale, scale);
+        this.ctx.translate(x/scale, y/scale);// center canvas
         
         const em = parseFloat(window.getComputedStyle(document.documentElement).fontSize); 
 
-        const gridSize = 5 * em * this.scale;
+        const gridSize = 5 * em * scale;
         this.canvas.style = ` background: 
             repeating-linear-gradient(90deg,  transparent 0px, rgba(0, 0, 0, 0.13) 2px, transparent 0px, transparent ${gridSize}px)   
-            ${x % gridSize}px ${y % gridSize}px 
-            
-            `;
+            ${x % gridSize}px ${y % gridSize}px`;
 
-        //this.canvas.style = `background-position: ${x % 22}px ${y % 22}px;`;
         this.ctx.save();
-        this.drawElements();
-
+        this.drawElements(); // draws a list of elements
 
         // invokes the next render loop// could defer to a promise/timer, to set a fixed framerate. 
         window.requestAnimationFrame(this.renderLoop.bind(this))
-
-        // draws a list of elements
     }
 }
-
-/*class Display extends Renderer {
-renderLoop() {
-        this.ctx.resetTransform();
-        // clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // allow world offset
-        const [x, y] = [this.xpos(), this.ypos()];
-        //const y = this.ypos();
-        this.ctx.translate(x, y);// center canvas
-        this.canvas.style = `background-position: ${x % 22}px ${y % 22}px;`;
-
-        this.ctx.save();
-        this.drawElements();
-
-
-        // invokes the next render loop// could defer to a promise/timer, to set a fixed framerate. 
-        window.requestAnimationFrame(this.renderLoop.bind(this))
-
-        // draws a list of elements
-    }
-}*/

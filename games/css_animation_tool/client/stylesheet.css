@@ -1,44 +1,88 @@
-body{
+body {
 
-    display: grid;
-    height: 100vh; 
-    width: 100vw;
-    grid-auto-rows: auto 10fr 4fr;
-    margin: 0;
-    padding: 0;
+  display: grid;
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  grid-auto-rows: auto 2fr 2fr;
+  grid-auto-columns: auto 1fr;
+  margin: 0;
+  padding: 0;
 }
 
 
 
-#display {
-    width: 100vw;
-    height: 50vh;
-    box-sizing: border-box; 
-    background: 
-    repeating-linear-gradient(0deg, rgba(0,0,0,.04) 0px, rgba(0,0,0,.04) 1px, transparent 1px, transparent 20px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,.04) 0px, rgba(0,0,0,.04) 1px, transparent 1px, transparent 20px);
+canvas#display {
+  width: 100%;
+   height: 100%;
+  box-sizing: border-box;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, .04) 0px, rgba(0, 0, 0, .04) 1px, transparent 1px, transparent 20px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, .04) 0px, rgba(0, 0, 0, .04) 1px, transparent 1px, transparent 20px);
 }
 
-#timeline{
+canvas#timelineCanvas {  
+  width: 100%;
+  height: 100%;
+}
+
+
+#timeline {
+  width: 100%;
+  height: auto;
+  --timelineXscale: 5em;
+
+  background:
+    repeating-linear-gradient(90deg, transparent 0px, rgba(0, 0, 0, 0.13) 2px, transparent 0px, transparent var(--timelineXscale));
+}
+
+
+
+ul#animVals{
+  list-style-type: none;
+  padding-left: 1em;
+}
+
+ul#animVals li {
+  white-space: nowrap;
+}
+
+
+#timelineSidebar{
+  display: block;
+  background-color: grey;
+}
+#timelineSidebar span{
     width: 100%;
-    height: 100%;
-    --timelineXscale : 5em; 
-
-    background:
-    repeating-linear-gradient(90deg,  transparent 0px, rgba(0, 0, 0, 0.13) 2px, transparent 0px, transparent var(--timelineXscale));
+    height: max-content;
+    box-sizing: content-box;
+    display: inline-flex;
+    gap: 0.5em;
+}
+#timelineSidebar span>* {
+  box-sizing: border-box;
+  width: max-content;
+  height:100%;
+  
+  
+  text-wrap-mode: nowrap;
+  white-space-collapse: preserve;
+  
+}
+h4{
+  margin: 0;
+  text-align: center;
 }
 
-#object{ 
-    /*animation: 
-        animate1 2s cubic-bezier(.31,.92,.75,.08) infinite,
-        animate2 2s ease infinite 1s;*/
-
-    display: block; 
-    position: absolute;
-    width:  10em;
-    aspect-ratio: 1; 
-    background-color: red;
+#objectDropdown{
+    width: 100% !important;
 }
+
+
+
+
+
+
 
 /*
 @keyframes animate1 {
@@ -64,10 +108,45 @@ body{
 }*/
 
 
+
+#object {
+
+  display: block;
+  position: absolute;
+  width: 10em;
+  aspect-ratio: 1;
+  background-color: red;
+}
+
+
 @property --tx {
   syntax: '<length>';
   inherits: true;
   initial-value: 0px;
+}
+
+@keyframes tx0 {
+  to {
+    --tx: 0px
+  }
+}
+
+@keyframes tx1 {
+  to {
+    --tx: 20px
+  }
+}
+
+@keyframes tx2 {
+  to {
+    --tx: -20px
+  }
+}
+
+@keyframes tx3 {
+  to {
+    --tx: 40px
+  }
 }
 
 @property --ty {
@@ -75,43 +154,63 @@ body{
   inherits: true;
   initial-value: 0px;
 }
+
 @property --r {
   syntax: '<angle>';
   inherits: true;
   initial-value: 0deg;
 }
 
-
-@keyframes moveX {
-  from {--tx: 0px}
-  to   { --tx: 100px; }
+@property --scaleX {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
 }
 
-@keyframes moveY {
-  from {--ty: 0px}
-  to   { --ty: 50px; }
+@property --scaleY {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
 }
 
-@keyframes moveX2 {
-  to   { --tx: 150px; }
-}
-
-@keyframes moveY2 {
-  to   { --ty: 100px; }
-}
-
-@keyframes rotate {
-  to   { --r: 180deg; }
-}
-
-@keyframes moveX3 {
-    to { --tx: 180px; }
-}
 
 #object {
   /* Combine both transforms from vars */
-  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r)); 
+  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r));
   /* Run both animations together */
+  animation: 
+  tx0 210ms cubic-bezier(0.047619047619047616, 0, 0.9523809523809523, 1) 0ms forwards,
+  tx1 90ms cubic-bezier(0.1111111111111111, 0, 0.8888888888888888, 1) 210ms forwards,
+  tx2 200ms cubic-bezier(0.05, 0, 0.95, 1) 300ms forwards;
+
+  animation-iteration-count: infinite;
+  animation-composition: add;
+  /*animation-play-state: paused;*/
+}
+
+
+span{
+  display: block;
+  width: max-content;
+}
+
+/*doesn't seem to work*/
+select option[value="addObject"]{
+  color: rgb(67, 208, 233) !important;
+  text-decoration: underline !important;
+}
+
+
+
+
+
+
+/*
+
+#object {
+  /* Combine both transforms from vars * /
+  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r)); 
+  /* Run both animations together * /
   animation: 
     moveX 2s cubic-bezier(.31, .92, .75, .08) forwards,
     moveY 2s ease-in-out forwards , 
@@ -119,10 +218,18 @@ body{
     moveY2 2s ease-in-out  2s forwards, 
     rotate 2s ease-in-out 2s forwards, 
     moveX3 0.5s ease-out 4s forwards; 
+
+  animation-composition: add;
+  animation-play-state:paused;
 }
 
 #object:focus {  
-    animation: normal;
-
-    animation: moveX 2s ease-out forwards !important; 
+    /*animation: moveX 2s ease-out forwards !important; * /
+    
+    animation: none;
+  
 }
+#object:hover {
+  animation-play-state:running;
+}
+*/
