@@ -1,3 +1,6 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
 body {
 
   display: grid;
@@ -8,48 +11,93 @@ body {
   grid-auto-columns: auto 1fr;
   margin: 0;
   padding: 0;
+
+  /*adds the imported font*/
+  font-family: "Outfit", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
 }
 
-
-
-canvas#display {
+#display {
   width: 100%;
-   height: 100%;
+  min-height: 20vh;
+  height: fit-content;
+  max-height: 50vh;
   box-sizing: border-box;
   background:
     repeating-linear-gradient(0deg, rgba(0, 0, 0, .04) 0px, rgba(0, 0, 0, .04) 1px, transparent 1px, transparent 20px),
     repeating-linear-gradient(90deg, rgba(0, 0, 0, .04) 0px, rgba(0, 0, 0, .04) 1px, transparent 1px, transparent 20px);
 }
-
-canvas#timelineCanvas {  
+#timelineCanvas {  
   width: 100%;
   height: 100%;
+
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5) inset;
+}
+
+h1 {
+   text-align: center;
+}
+
+h4{
+  margin: 0;
+  text-align: center;
 }
 
 
-#timeline {
-  width: 100%;
-  height: auto;
-  --timelineXscale: 5em;
-
-  background:
-    repeating-linear-gradient(90deg, transparent 0px, rgba(0, 0, 0, 0.13) 2px, transparent 0px, transparent var(--timelineXscale));
+.fa-solid.fa-plus{
+  aspect-ratio: 1;
 }
+
+
+
+.topbar {
+  background-color: lightgrey;
+  box-sizing: border-box;
+}
+.topbar > * {
+  margin: 0.3em;
+}
+
+input, select {
+  box-sizing: border-box;
+  border-style: none;
+  border-radius: 0.5em;
+  font-size: inherit;
+}
+
+settings {
+  padding-inline: 0.5em;
+}
+
+
 
 
 
 ul#animVals{
+  display: flex;
+  flex-direction: column;
   list-style-type: none;
-  padding-left: 1em;
+  padding-inline: 1em;
 }
 
-ul#animVals li {
+ul#animVals > * {
   white-space: nowrap;
+  
+  border-radius: 0.4em;
+  padding: 0.2em; 
+  margin: 0.2em;
+  background: rgb(170, 170, 170);
+    
 }
 
 
 #timelineSidebar{
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+
   background-color: grey;
 }
 #timelineSidebar span{
@@ -59,26 +107,30 @@ ul#animVals li {
     display: inline-flex;
     gap: 0.5em;
 }
+
 #timelineSidebar span>* {
-  box-sizing: border-box;
-  width: max-content;
-  height:100%;
-  
-  
   text-wrap-mode: nowrap;
   white-space-collapse: preserve;
   
 }
-h4{
-  margin: 0;
-  text-align: center;
-}
+
 
 #objectDropdown{
     width: 100% !important;
 }
 
 
+
+span{
+  display: block;
+  width: max-content;
+}
+
+/*doesn't seem to work*/
+select option[value="addObject"]{
+  color: rgb(67, 208, 233) !important;
+  text-decoration: underline !important;
+}
 
 
 
@@ -106,6 +158,9 @@ h4{
   75% { opacity: 0; }
   100% { opacity: 1; }
 }*/
+
+
+
 
 
 
@@ -183,22 +238,11 @@ h4{
   tx1 90ms cubic-bezier(0.1111111111111111, 0, 0.8888888888888888, 1) 210ms forwards,
   tx2 200ms cubic-bezier(0.05, 0, 0.95, 1) 300ms forwards;
 
-  animation-iteration-count: infinite;
+  animation-iteration-count: 1;
   animation-composition: add;
   /*animation-play-state: paused;*/
 }
 
-
-span{
-  display: block;
-  width: max-content;
-}
-
-/*doesn't seem to work*/
-select option[value="addObject"]{
-  color: rgb(67, 208, 233) !important;
-  text-decoration: underline !important;
-}
 
 
 

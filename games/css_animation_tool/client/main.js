@@ -1,5 +1,5 @@
 import {TimelineRenderer} from "./renderer.js";  
-import { Timeline, AnimProperty, svg} from "./core/objects.js";
+import { Timeline, AnimProperty} from "./core/objects.js";
 import {} from "./core/drawingFunctions.js"; // initialises some stuff 
 
 
@@ -63,11 +63,7 @@ Array.from(animVals).forEach(el => {
 
 
 
-
-
-
-// adds some initial elements
-//renderer.addElement(new sinBar(this.canvas));
+/*
 
 var xValProperty = timeline.animProperties["tx"];
 
@@ -78,5 +74,7 @@ xValProperty.addKeyframe(300, -20);
 xValProperty.addKeyframe(500, 40);
 
 renderer.addElements([xValProperty]);
+v
 
-svg.loadImage("speachbubble.svg", ((el) => renderer.addElement(el)));
+
+*/
