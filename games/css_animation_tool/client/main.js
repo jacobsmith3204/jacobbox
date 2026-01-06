@@ -1,65 +1,71 @@
-import {TimelineRenderer} from "./renderer.js";  
-import { Timeline, AnimProperty} from "./core/objects.js";
-import {} from "./core/drawingFunctions.js"; // initialises some stuff 
+import { TimelineRenderer } from "./renderer.js";
+import { Timeline } from "./core/objects.js";
+import { } from "./core/drawingFunctions.js"; // initialises some stuff 
+import { LoadFromLocalStorage, SaveToLocalStorage, GenerateCSS } from "./core/exporter.js";
+import { createAnimPropertiesFromDocument } from "./interface/interfaceBuilder.js";
 
 
 
 // add functionallity to buttons 
-const dropdown = document.getElementById("objectDropdown");
-const field = document.getElementById("addObjectField");
+const addObjectButton = document.getElementById("addObjectButton");
+const addObjectForm = document.getElementById("addObjectForm");
 const newObjectIdInput = document.getElementById("newObjectId");
+const saveButton = document.getElementById("saveButton");
 
 
-dropdown.addEventListener('onchange', ToggleAddObjectField);
-function ToggleAddObjectField() {
-    // checks if the selected option is "addObject" and makes it visible based on that 
-    console.log("changed");
-    const option = dropdown.options[dropdown.options.selectedIndex];
-    field.style = option.value == "addObject" ? "" : "display:none;";
+addObjectButton.addEventListener('click', ShowAddObjectForm);
+function ShowAddObjectForm() { 
+    console.warn("button does nothing...");
 }
-ToggleAddObjectField();
+
+saveButton.addEventListener("click", () => {
+    SaveToLocalStorage(timeline); // saved version will be in json
+    // copied version is the full css to paste
+    const cssText = GenerateCSS(timeline);
+    navigator.clipboard.writeText(cssText)
+        .then(() => console.log("saved sucessfully: ", cssText.toString()))
+        .catch(err => console.error("couldnt copy text: ", err))
+
+});
 
 
-
-field.addEventListener('onSubmit', (event)=> { 
+/*
+addObjectForm.addEventListener('onSubmit', (event)=> { 
     event.preventDefault(); 
     AddObjectFromId(Object.fromEntries(new FormData(this)).id);
 });
-function AddObjectFromId(id) {
-    console.log("adding", id);
-    // makes sure there won't be duplicates
-    for (let i = 0; i < dropdown.options.length; i++) {
-        if (dropdown.options[i].value === id) {
-            console.warn("object already exists")
-            return;
-        }
-    }
-    // adds the item to the list
-
-    var el = document.createElement("option", { value: id });
-    el.innerText = id;
-    dropdown.appendChild(el);
-
-    newObjectIdInput.value = "";
-    dropdown.selectedIndex = dropdown.options.length - 1;
-    ToggleAddObjectField();
-}
+*/
 
 
 
 
 
-const renderer = new TimelineRenderer(document.getElementById("timelineCanvas"));
-const timeline = new Timeline();
 
 
-const animVals = document.getElementsByClassName("animVal"); 
-Array.from(animVals).forEach(el => {
-    console.log(el);
 
-    var animProperty = new AnimProperty(el.getAttribute("name"), el.getAttribute("property"), el.getAttribute("default"), el.getAttribute("extention"));
-    timeline.animProperties[el.getAttribute("name")] = animProperty;
-});
+const renderer = window.renderer = new TimelineRenderer(document.getElementById("timelineCanvas"));
+const timeline = window.timeline = new Timeline();
+
+
+LoadFromLocalStorage(timeline);
+
+
+
+timeline.animProperties["tx"].addKeyframe(1,1);
+timeline.animProperties["tx"].addKeyframe(100,1);
+
+console.log(timeline.animProperties["tx"]);
+
+
+// 
+//createAnimPropertiesFromDocument().forEach(animProperty => timeline.animProperties[animProperty.name] = animProperty);
+
+
+
+
+
+
+
 
 
 

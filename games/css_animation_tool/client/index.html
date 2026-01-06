@@ -3,6 +3,7 @@
 
 <head>
     <title>css animation tool</title>
+    <link rel="icon" type="image/png" href="icon.png">
     <base href="/css_animation_tool/client/">
     <link href="stylesheet.css" rel="stylesheet">
     <script src="main.js" type="module"></script>
@@ -10,7 +11,7 @@
 </head>
 
 <body>
-    <h1 style="grid-column: 1 / 3;"> CSS ANIMATION TOOL </h1>
+    <h1 style="grid-column: 1 / 3;"> <image src="icon.png" style=" height: 1em; aspect-ratio: 1;"></image> CSS ANIMATION TOOL </h1>
     <div style="grid-column: 1 / 3;" id="display"></div>
     <canvas style="grid-column: 2; grid-row: 3;" id="timelineCanvas"> </canvas>
 
@@ -18,17 +19,12 @@
 
 
     <div style="grid-column: 1; grid-row: 3;" id="timelineSidebar">
-        <span class="topbar">
-            <h4>target</h4>
+        <span id="topbar">
+            <h4> target</h4>
             <select id="objectDropdown">
                 <option value="object">object</option>
             </select>
-            <input type="button" value="+" class="fa-solid fa-plus"> 
-
-            <form id="addObjectField">
-                <input type="text" id="newObjectId" name="id" placeholder="type 'id' of object">
-                <input type="submit" value="add from id">
-            </form>
+            <input id="addObjectButton" type="button" value="+" class="fa-solid fa-plus"> 
         </span>
         <settings>
             <span>
@@ -43,17 +39,29 @@
 
         <ul id="animVals">
             <li class="animVal" name="tx" property="length" , default="0" extention="px"><input type="checkbox" />
-                tx </li>
+                tx <colorSwatch></colorSwatch></li>
             <li class="animVal" name="ty" property="length" , default="0" extention="px"><input type="checkbox" />
-                ty</li>
+                ty <colorSwatch></colorSwatch></li>
             <li class="animVal" name="r" property="angle" , default="0" extention="deg"><input type="checkbox" />
-                rotation</li>
+                rotation <colorSwatch></colorSwatch></li>
             <li class="animVal" name="scaleX" property="length" , default="0" extention="px"><input type="checkbox" />
-                scaleX</li>
+                scaleX <colorSwatch></colorSwatch></li>
             <li class="animVal" name="scaleY" property="length" , default="0" extention="px"><input type="checkbox" />
-                scaleY</li>
+                scaleY <colorSwatch></colorSwatch></li>
         </ul>
 
+
+        <span></span>
+
+        <span id="bottombar">
+            <input type="button" id="saveButton" value="save and copy to clipboard">
+        </span>
+
+
+         <!--form id="addObjectForm">
+                <input type="text" id="newObjectId" name="id" placeholder="type 'id' of object">
+                <input type="submit" value="add from id">
+            </form-->
         <!--context-menu>
                 <li> add
                 <li>

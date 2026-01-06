@@ -37,7 +37,12 @@ body {
 }
 
 h1 {
-   text-align: center;
+  display: inline-flex;
+  font-size: xx-large;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 h4{
@@ -52,13 +57,25 @@ h4{
 
 
 
-.topbar {
+#topbar {
   background-color: lightgrey;
   box-sizing: border-box;
 }
-.topbar > * {
+#topbar > * {
   margin: 0.3em;
 }
+
+#bottombar {
+  margin-top: auto;
+  background-color: lightgrey;
+}
+#bottombar > * {
+  margin: 0.3em;
+}
+#saveButton {
+  width: 100%;
+}
+
 
 input, select {
   box-sizing: border-box;
@@ -83,6 +100,7 @@ ul#animVals{
 }
 
 ul#animVals > * {
+  display: inline-flex;
   white-space: nowrap;
   
   border-radius: 0.4em;
@@ -90,6 +108,17 @@ ul#animVals > * {
   margin: 0.2em;
   background: rgb(170, 170, 170);
     
+}
+
+
+colorSwatch {
+  display: inline-block;
+  background-color: red;
+  width: 1em;
+  height: 5px;
+  border-radius: 0.3em;
+  margin-inline-start: auto;
+  margin-block: auto;
 }
 
 
@@ -111,7 +140,6 @@ ul#animVals > * {
 #timelineSidebar span>* {
   text-wrap-mode: nowrap;
   white-space-collapse: preserve;
-  
 }
 
 
