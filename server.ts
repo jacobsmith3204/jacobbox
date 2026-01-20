@@ -357,7 +357,7 @@ function NewHost(socket, message) {
     // adds new on message function. 
     socket.on('message', (message) => {
         try {
-            var data = JSON.parse(message);
+            var data = typeof message ==  "object"? message :JSON.parse(message);
             HandleHostMessage(gameRoom, data["type"], data);
         }
         catch (e) {
@@ -373,7 +373,7 @@ function NewClient(socket, message) {
     // adds new on message function.
     socket.on('message', (message) => {
         try {
-            var data = JSON.parse(message);
+            var data = typeof message ==  "object"? message : JSON.parse(message);
             HandleClientMessage(gameClient, data["type"], data);
         }
         catch (e) {
@@ -391,7 +391,8 @@ function HandleHostMessage(gameRoom: GameRoom, type: string, data: any) {
     switch (type) {
         case "toClient":
             // sends a message to a particular client
-            gameRoom.SendMessageToClient(this.clients.get(data["clientID"]), data["message"]);
+            console.log(gameRoom, gameRoom?.clients); 
+            gameRoom.SendMessageToClient(gameRoom.clients.get(data["clientID"]), data["message"]);
             break;
         case "toAllClients":
             // sends a message to a particular client
