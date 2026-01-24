@@ -205,7 +205,7 @@ select option[value="addObject"]{
 @property --tx {
   syntax: '<length>';
   inherits: true;
-  initial-value: 0px;
+  initial-value: 100px;
 }
 
 @keyframes tx0 {

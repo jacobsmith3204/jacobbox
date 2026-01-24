@@ -1,4 +1,6 @@
-import {curve, Handle, Anchor, svg, AnimProperty} from "./objects.js";
+import { AnimProperty } from "./animation.js";
+import {curve, Handle, Anchor, svg} from "./objects.js";
+
 
 
 CanvasRenderingContext2D.prototype.drawRotatedRect = function (x, y, width, height, originX, originY, angle) {

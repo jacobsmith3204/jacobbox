@@ -1,9 +1,10 @@
 import { TimelineRenderer } from "./renderer.js";
-import { Timeline } from "./core/objects.js";
+import { } from "./core/objects.js";
 import { } from "./core/drawingFunctions.js"; // initialises some stuff 
-import { LoadFromLocalStorage, SaveToLocalStorage, GenerateCSS } from "./core/exporter.js";
-import { createAnimPropertiesFromDocument } from "./interface/interfaceBuilder.js";
-
+import {LoadFromLocalStorage, SaveToLocalStorage} from "./core/io_localStorage.js";
+import { GenerateCSS } from "./core/exporter.js";
+import {  } from "./interface/interfaceBuilder.js";
+import {AnimationTimeline} from "./core/animation.js";
 
 
 // add functionallity to buttons 
@@ -13,10 +14,8 @@ const newObjectIdInput = document.getElementById("newObjectId");
 const saveButton = document.getElementById("saveButton");
 
 
-addObjectButton.addEventListener('click', ShowAddObjectForm);
-function ShowAddObjectForm() { 
-    console.warn("button does nothing...");
-}
+addObjectButton.addEventListener('click', ()=> console.warn("button does nothing..."));
+
 
 saveButton.addEventListener("click", () => {
     SaveToLocalStorage(timeline); // saved version will be in json
@@ -25,62 +24,19 @@ saveButton.addEventListener("click", () => {
     navigator.clipboard.writeText(cssText)
         .then(() => console.log("saved sucessfully: ", cssText.toString()))
         .catch(err => console.error("couldnt copy text: ", err))
-
 });
-
-
-/*
-addObjectForm.addEventListener('onSubmit', (event)=> { 
-    event.preventDefault(); 
-    AddObjectFromId(Object.fromEntries(new FormData(this)).id);
-});
-*/
-
-
-
-
-
 
 
 
 const renderer = window.renderer = new TimelineRenderer(document.getElementById("timelineCanvas"));
-const timeline = window.timeline = new Timeline();
+const timeline = window.timeline = new AnimationTimeline(document.getElementById("object"));
 
 
 LoadFromLocalStorage(timeline);
 
 
 
-timeline.animProperties["tx"].addKeyframe(1,1);
-timeline.animProperties["tx"].addKeyframe(100,1);
+timeline.properties["tx"].addKeyframe(1,1);
+timeline.properties["tx"].addKeyframe(100,1);
 
-console.log(timeline.animProperties["tx"]);
-
-
-// 
-//createAnimPropertiesFromDocument().forEach(animProperty => timeline.animProperties[animProperty.name] = animProperty);
-
-
-
-
-
-
-
-
-
-
-/*
-
-var xValProperty = timeline.animProperties["tx"];
-
-xValProperty.showHandles = true;
-xValProperty.addKeyframe(0, 0);
-xValProperty.addKeyframe(210, 20);
-xValProperty.addKeyframe(300, -20);
-xValProperty.addKeyframe(500, 40);
-
-renderer.addElements([xValProperty]);
-v
-
-
-*/
+console.log(timeline.properties["tx"]);

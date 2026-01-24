@@ -1,114 +1,132 @@
 
-import {AnimProperty } from "./objects.js";
-
-export function LoadFromLocalStorage(timeline) {
-    const existingJSONProperties = JSON.parse(localStorage.getItem("timeline") || "{}")["animProperties"];
-    // if it was able to load in an object with animProperties
-    if (existingJSONProperties) {
-        // goes through the entries and assigns them to a new animProperty so we can treat it like a class with local functions
-        Object.entries(existingJSONProperties).map(([label, object]) =>   timeline.animProperties[label] = Object.assign(new AnimProperty(), object));
-    }
-}
-
-export function SaveToLocalStorage(timeline) {
-    localStorage.setItem("timeline", JSON.stringify(timeline));
-}
-
-
-
-
-
-export function GenerateCSS(timeline, globalChanges = {}) {
+// handles the exporting of the animation curves to css
+var globalChanges = {}; 
+export function GenerateCSS(animationTimeline, _globalChanges = {}) {
+    globalChanges = _globalChanges; 
 
     var cssStringbuilder = [];
     var cssAnimationStringbuilder = [];
     // retrieve the AnimVal values and calls toString
 
-    const animProperties = timeline.animProperties;
-    Object.values(animProperties).forEach(animProperty => {
+    const properties = Object.values(animationTimeline.properties); 
 
-        console.log(animProperty);
-        // 
-        const animVal = animProperty.animVal;
-        const keyframes = animProperty.keyframes;
+    for (const property of properties) {
+        console.log(property);
+
 
         // adds the animation property values to the generated string; 
-        const str = animVal.toString();
-        cssStringbuilder.push(str);
-        //console.log(str);
-
-        // 
-        var keyFramesStringbuilder = [];
-        var animationStringbuilder = [];
-
-        var i = 0;
-        for (var i = 0; i < keyframes.length; i++) {
-            var name = `${animProperty.name}${i}`;
-            // generates the individual keyframe points
-            keyFramesStringbuilder.push(`@keyframes ${name} {to {--${animVal.name}:${keyframes[i].anchor.y}${animVal.extention} }}`);
-
-            // calculates 
-            var secondsToNextKeyframe = CalculateSecondsToNextFrame(keyframes[i], keyframes[i + 1] || undefined);
-            var curve = CalculateCurve(keyframes[i], keyframes[i + 1] || undefined);
-            var offset = CalculateOffset(keyframes[i]);
-
-            //if(curve)
-            animationStringbuilder.push(`${name} ${secondsToNextKeyframe}ms ${curve} ${offset}ms forwards`);
-        };
-
-        var animString = animationStringbuilder.join(',');
-        var keyframesString = keyFramesStringbuilder.join('\n');
-
-        //console.log(animString);
-        //console.log(keyframesString);
-
-        cssStringbuilder.push(keyframesString);
-        if (animString.trim().length !== 0)
-            cssAnimationStringbuilder.push(animString);
-    });
-
-    // joins the properties into a single string created with a newline character.
-    cssStringbuilder.push(`animation: ${cssAnimationStringbuilder.join(`,`)};`);
-
-    return cssStringbuilder.join('\n');
-
-    function CalculateOffset(keyframe1) {
-        return (globalChanges["offset"] || 0) + keyframe1.anchor.x;
+        cssStringbuilder.push(propertyString(property));
+        cssStringbuilder.push(keyframesString(property));
+        cssAnimationStringbuilder.push(animationString(property));
     }
+    // adds the portion of the code that maps the variables to the transform/color/etc 
+    const targets = bindTargets(properties);
+    
+
+    // final string of everything for this one timeline ready to copy into the css file. 
+    return `
+        ${cssStringbuilder.join('\n')}
+        #${animationTimeline.id} {
+            ${targets}
+            animation: ${cssAnimationStringbuilder.filter(Boolean).join(',')};
+            animation-itteration-count: ${animationTimeline.canLoop ? "infinite" : "1"}; 
+            animation-composition: ${animationTimeline.animationComposition}; 
+        }
+    `;
+}
+
+// needs to generate something like
+// transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r));
+// but should also be able to handle color etc
+function bindTargets(properties) {
+    const targets = {};
+
+    // creates lists per targeted css variable, adding each property variable. 
+    for (const property of properties) {
+        // get the array at targets[name of target] or creates one and gets it 
+        const targetArray = targets[property.target] || (targets[property.target] = []);
+
+        // if its transform: 'translateX()' then we need to wrap it in a 
+        if (property.targetFunction)
+            targetArray.push(`${property.targetFunction}(var(--${property.name}))`);
+        else
+            targetArray.push(`var(--${property.name})`);
+    }
+    console.log(targets);
+
+    // then we create the variable bindings, with their new values and turn in all into a string. 
+    return Object.entries(targets).map(([key, value]) => `${key}: ${value.filter(Boolean).join(" ")};`).join("\n");
 }
 
 
-function CalculateSecondsToNextFrame(frame1, frame2) {
-    if (!frame2)
-        return 0;
-    var node1x = frame1.anchor.x;
-    var node2x = frame2.anchor.x;
-    return node2x - node1x;
+function propertyString(property) {
+    return `@property ${property.name} { syntax: '<${property.syntax}>'; inherits: true; initial-value:${property.initialValue}${property.typeExtention} }`;
+
 }
-function CalculateCurve(frame1, frame2) {
+function keyframesString(property) {
+    const keyframes = property.keyframes;
+    const list = [];
+    for (var i = 0; i < keyframes.length; i++) {
+        list.push(`@keyframes ${property.name}${i} {to {--${property.name}:${keyframes[i].anchor.y}${property.extention} }}`);
+    }
+    return list.join("\n");
+}
 
-    if (!frame2)
-        return;
 
-    const p1 = frame1.anchor;
-    const h1 = frame1.handleRight;
+function animationString(property) {
+    // calculates 
+    const list = [];
+    const keyframes = property.keyframes;
 
-    const p2 = frame2.anchor;
-    const h2 = frame2.handleLeft;
+    for (var i = 0; i < keyframes.length; i++) {
+        const secondsToNextKeyframe = CalculateSecondsToNextFrame(keyframes[i], keyframes[i + 1] || undefined);
+        const curve = CalculateCurve(keyframes[i], keyframes[i + 1] || undefined);
+        const offset = CalculateOffset(keyframes[i]);
 
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
+        list.push(`${property.name}${i} ${secondsToNextKeyframe}ms ${curve} ${offset}ms forwards`);
+    }
+    return list.filter(Boolean).join(`,`);
 
-    // Choose primary axis; here: X
-    const x1 = (h1.x - p1.x) / dx;
-    const y1 = (h1.y - p1.y) / dy;
 
-    const x2 = (h2.x - p1.x) / dx;
-    const y2 = (h2.y - p1.y) / dy;
 
-    // CSS constrains x position
-    const cx1 = Math.max(0, Math.min(1, x1));
-    const cx2 = Math.max(0, Math.min(1, x2));
+    // some helper functions for generating the correct values; 
+    function CalculateOffset(keyframe1) {
+        return (globalChanges?.["offset"] || 0) + keyframe1.anchor.x;
+    }
+    function CalculateSecondsToNextFrame(frame1, frame2) {
+        if (!frame2)
+            return 0;
+        var node1x = frame1.anchor.x;
+        var node2x = frame2.anchor.x;
+        return node2x - node1x;
+    }
 
-    return `cubic-bezier(${cx1}, ${y1}, ${cx2}, ${y2})`;
+    // curve to css besier-curve 
+    function CalculateCurve(frame1, frame2) {
+
+        if (!frame2)
+            return;
+
+        const p1 = frame1.anchor;
+        const h1 = frame1.handleRight;
+
+        const p2 = frame2.anchor;
+        const h2 = frame2.handleLeft;
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+
+        // Choose primary axis; here: X
+        const x1 = (h1.x - p1.x) / dx;
+        const y1 = (h1.y - p1.y) / dy;
+
+        const x2 = (h2.x - p1.x) / dx;
+        const y2 = (h2.y - p1.y) / dy;
+
+        // CSS constrains x position
+        const cx1 = Math.max(0, Math.min(1, x1));
+        const cx2 = Math.max(0, Math.min(1, x2));
+
+        return `cubic-bezier(${cx1}, ${y1}, ${cx2}, ${y2})`;
+    }
 }
