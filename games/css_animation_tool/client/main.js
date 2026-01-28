@@ -36,7 +36,12 @@ LoadFromLocalStorage(timeline);
 
 
 
+/*
 timeline.properties["tx"].addKeyframe(1,1);
 timeline.properties["tx"].addKeyframe(100,1);
+*/
 
 console.log(timeline.properties["tx"]);
+
+
+

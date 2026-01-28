@@ -1,168 +1,182 @@
+import { StateSystem, StateList, State } from "./StateMachine.js";
+
+
+
 export class Input {
-    constructor( renderer) {
+    renderer;
+    canvas;
 
-        const canvas = renderer.canvas;
-        const context = renderer;
-        const input = this; 
+    mouseX;
+    mouseY;
 
-        function handleEvent(event) { input.handleEvent(event, context); }
+    stateSystem = new StateSystem(this);
+    set state(newState) { this.stateSystem.set(newState) };
+    get state() { return this.stateSystem.currentState };
 
-        canvas.addEventListener('mousedown', handleEvent);
-        canvas.addEventListener('mousemove', handleEvent);
-        canvas.addEventListener('mouseleave', handleEvent);
-        canvas.addEventListener('mouseup', handleEvent);
-        canvas.addEventListener('contextmenu', handleEvent);
-        canvas.addEventListener('wheel', handleEvent);
+
+
+
+    constructor(renderer) {
+        const canvas = this.canvas = renderer.canvas;
+        this.renderer = renderer;
+        const input = this;
+
+
+        // needed an up to date mouse x and y, as the onStart dont have a referance. 
+        canvas.addEventListener("mousemove",
+            (e) => {
+                input.mouseX = e.clientX;
+                input.mouseY = e.clientY;
+                //console.log(input, "updated mouse positions");
+            });
+
+        // adds the events based on their label
+        const events = ['mousedown', 'mousemove', 'mouseleave', 'mouseup', 'contextmenu', 'wheel'];
+        events.map(e => {
+            const label = e;
+            canvas.addEventListener(label, (event) => {
+                //console.log("captured event: ", event);
+                input.stateSystem.call(label, event);
+            });
+        });
+        // sets the initial state to 0/(default); 
+        input.state = 0;
     }
 
 
-    static mouseMove(event) {
-        // only gets called if the pointer is inside.  
-        //console.log(event);
+    // allows us to define spesific states the 
+    static STATES = new StateList({
+        default: new State("default", {
+            wheel: this.handleScrollWheel,
+            mousedown: this.mousedownDecideNextState,
+        }),
+        navigatingCanvas: new State("navigatingCanvas", {
 
-        if (this.dragStartX) {
-            this.dragX = event.clientX - this.dragStartX,
-                this.dragY = event.clientY - this.dragStartY
-            //console.log(`Mouse X: ${pointerX}, Mouse Y: ${pointerY}`);
-        }
-    }
+            onStart: this.startNavigation,
+            onExit: this.endNavigation,
+            mousemove: this.updateNavigation,
+            mouseleave: function () { this.state = "default" },
+            mouseup: function () { this.state = "default" },
+            wheel: this.handleScrollWheel,
 
+        }),
+        movingNode: new State("movingNode", {
 
-    handleEvent(event, context) {
-
-
-        if (!context.state) {
-            // chooses what state it should be in. 
-            switch (event.type) {
-
-                case 'contextmenu':
-                    this.handleContextMenu(event, context);
-                    event.preventDefault();
-                    break;
-                case 'mousedown':
-                    //console.log(event); // 
-                    var node = context.findNode(event);
-                    if (node) {
-                        this.handleAnchorMovement(event, context);
-                        this.handleHandleMovement(event, context);
-                    }
-                    else {
-                        this.handleNavigation(event, context);
-                    }
-                    break;
-
-                case 'wheel':
-                    this.handleZoom(event, context);
-                    break; // since its one off return so it doesnt set context.state
-
-                case 'mousemove':
-                    //console.log(event);
-                    var el = context.elements[0];
-
-                    // mouse position in canvas
-                    const [mx, my] = this.getMousePosition(event, context);
-
-                    el.x = mx / context.scale;
-                    el.y = my / context.scale;
-
-                    break;
-                default:
-
-                    return;
-            }
-        }
-
-        if (context.state)
-            context.state[event.type]?.bind(context)(event);
-        //console.log("input context state", context.state);
-    }
+        }),
+    });
 
 
-    getMousePosition(event, context) {
-        const x = (event.clientX - context.canvas.offsetLeft) - context.xpos();
-        const y = (event.clientY - context.canvas.offsetTop) - context.ypos();
-        return [x, y];
-    }
-
-
-    handleZoom(event, context) {
-
-        //console.log("Window scrolled!", event);
-
-        // non-linear zoom.  
-        var zoom = (event.wheelDelta) / (1000 + context.scale);
-
-        // gets the mouse position relative to the canvas position
-        const [mx, my] = this.getMousePosition(event, context);
-
-        // adjusts the zoom level
-        context.scale += zoom;
-
-        // change origin to center zoom on cursor 
-        context.originX -= (mx * zoom) / context.scale;
-        context.originY -= (my * zoom) / context.scale;
-
-        //console.log(context.originX, context.originY);
-    }
-
-
-
-
-    handleNavigation(event, context) {
-        context.state = {
-            type: 'navigation',
-            mouseup: event => { Input.mouseUp.bind(context)(event); context.state = null; }, //  (event => { console.log(this.state, event);  })
-            mousemove: Input.mouseMove.bind(context),
-            mouseleave: event => { Input.mouseLeave.bind(context)(event); context.state = null; },
-        }
-        Input.mouseDown.bind(context)(event);
-        //console.log(context);
-    }
-    handleContextMenu(context) {
-        console.log("handling context menu");
-
-        context.state = null;
-    }
-
-
-
-
-    static getMousePosition(event) {
-        // gets the position of the mouse on screen
-        const rect = this.canvas.getBoundingClientRect();
-
-        const mouseX = (event.clientX - rect.left);
-        const mouseY = (event.clientY - rect.top);
-
-        const pointerX = mouseX - ((this.canvas.width / 2) + this.originX);
-        const pointerY = mouseY - ((this.canvas.height / 2) + this.originY);
-
-        return [pointerX, pointerY];
-    }
-
-    static mouseDown(event) {
-        //console.log(event);
-        this.dragStartX = event.clientX;
-        this.dragStartY = event.clientY;
-    }
-    static mouseUp(event) {
-        if (!this.dragStartX)
+    static mousedownDecideNextState(event) {
+        //console.log(event)
+        if (event.button !== 0) // not left button pressed 
             return;
-        //console.log(event);
 
-        this.originX += event.clientX - this.dragStartX;
-        this.originY += event.clientY - this.dragStartY;
 
-        this.dragX = 0;
-        this.dragY = 0;
-
-        this.dragStartX = null;
-        this.dragStartY = null;
+        if (false) {
+            // if clicking on a node
+            this.state = "movingNode";
+        }
+        else {
+            // if not clicking on anything important then we do normal canvas navigation
+            this.state = "navigatingCanvas";
+        }
     }
 
-    static mouseLeave(event) {
-        //console.log("LEAVE", event);
-        if (this.dragStartX)
-            Input.mouseUp.bind(this)(event);
+
+
+
+    // #region STANDARD NAVIGATION 
+    static handleScrollWheel(event) {
+
+        if (event.altKey) {
+            event.preventDefault();
+            this.handleScrollMovement(event);
+        }
+        else
+            this.handleZoom(event);
+    }
+
+    handleScrollMovement(event) {
+        //console.log("Window scrolled!", event);
+        this.renderer.originX += event.wheelDelta / this.renderer.scale;
+    }
+
+  
+    handleZoom(event) {
+        event.preventDefault();
+
+        const [mx, my] = this.getMousePosition(event);
+
+        const sensitivity = 0.001;
+        const zoomFactor = Math.exp(event.wheelDelta * sensitivity);
+
+        const oldScale = this.renderer.scale;
+        const newScale = oldScale * zoomFactor;
+
+        // world position under mouse (origin already removed)
+        const wx = mx / oldScale;
+        const wy = my / oldScale;
+
+        this.renderer.scale = newScale;
+
+        // re-anchor origin (screen space)
+        this.renderer.originX -= wx * (newScale - oldScale);
+        this.renderer.originY -= wy * (newScale - oldScale);
+    }
+
+
+    dragStartX;
+    dragStartY;
+    static startNavigation() {
+        //console.log("start" , this.renderer.xpos(), this.renderer.ypos());
+        this.dragStartX = this.mouseX;
+        this.dragStartY = this.mouseY;
+    }
+    static updateNavigation() {
+        this.renderer.dragX = this.mouseX - this.dragStartX;
+        this.renderer.dragY = this.mouseY - this.dragStartY;
+
+
+    }
+    static endNavigation() {
+
+        // adds the most up to date dragX and Y to origin
+        this.renderer.originX += this.mouseX - this.dragStartX;
+        this.renderer.originY += this.mouseY - this.dragStartY;
+        // resets 
+        this.renderer.dragX = 0;
+        this.renderer.dragY = 0;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+
+        //console.log("end ", this.renderer.xpos(), this.renderer.ypos());
+    }
+    //#endregion
+
+
+
+
+
+
+
+
+
+
+    dragNode(event) {
+        console.log("dragging node ", event);
+        var el = context.elements[0];
+
+        // mouse position in canvas
+        const [mx, my] = this.getMousePosition(event);
+
+        el.x = mx / this.renderer.scale;
+        el.y = my / this.renderer.scale;
+    }
+
+
+    getMousePosition(event) {
+        const x = (event.clientX - this.renderer.canvas.offsetLeft) - this.renderer.xpos();
+        const y = (event.clientY - this.renderer.canvas.offsetTop) - this.renderer.ypos();
+        return [x, y];
     }
 }

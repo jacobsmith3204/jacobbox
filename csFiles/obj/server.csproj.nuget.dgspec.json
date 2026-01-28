@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Projects\\Jacobbox\\csFiles\\server.csproj": {}
+    "D:\\Projects\\- NODE\\Jacobbox\\csFiles\\server.csproj": {}
   },
   "projects": {
-    "D:\\Projects\\Jacobbox\\csFiles\\server.csproj": {
+    "D:\\Projects\\- NODE\\Jacobbox\\csFiles\\server.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Projects\\Jacobbox\\csFiles\\server.csproj",
+        "projectUniqueName": "D:\\Projects\\- NODE\\Jacobbox\\csFiles\\server.csproj",
         "projectName": "server",
-        "projectPath": "D:\\Projects\\Jacobbox\\csFiles\\server.csproj",
+        "projectPath": "D:\\Projects\\- NODE\\Jacobbox\\csFiles\\server.csproj",
         "packagesPath": "C:\\Users\\Jacob\\.nuget\\packages\\",
-        "outputPath": "D:\\Projects\\Jacobbox\\csFiles\\obj\\",
+        "outputPath": "D:\\Projects\\- NODE\\Jacobbox\\csFiles\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -25,7 +25,9 @@
           "net9.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {}
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
+          "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
