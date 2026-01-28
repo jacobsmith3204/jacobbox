@@ -98,10 +98,10 @@ export class Input {
 
     handleScrollMovement(event) {
         //console.log("Window scrolled!", event);
-        this.renderer.originX += event.wheelDelta / this.renderer.scale;
+        this.renderer.originX += event.wheelDelta * this.renderer.scaleX;
     }
 
-  
+
     handleZoom(event) {
         event.preventDefault();
 
@@ -110,18 +110,30 @@ export class Input {
         const sensitivity = 0.001;
         const zoomFactor = Math.exp(event.wheelDelta * sensitivity);
 
-        const oldScale = this.renderer.scale;
-        const newScale = oldScale * zoomFactor;
+        const oldScaleX = this.renderer.scaleX;
+        const oldScaleY = this.renderer.scaleY;
+
+        const newScaleX = oldScaleX * zoomFactor;
+        const newScaleY = oldScaleY * zoomFactor;
 
         // world position under mouse (origin already removed)
-        const wx = mx / oldScale;
-        const wy = my / oldScale;
+        const wx = mx / oldScaleX;
+        const wy = my / oldScaleY;
 
-        this.renderer.scale = newScale;
 
-        // re-anchor origin (screen space)
-        this.renderer.originX -= wx * (newScale - oldScale);
-        this.renderer.originY -= wy * (newScale - oldScale);
+        //update and re-anchor origin (screen space) 
+        // allows shift and ctrl to isolate scales
+        
+        if (!event.shiftKey) {
+            this.renderer.scaleX = newScaleX;
+            this.renderer.originX -= wx * (newScaleX - oldScaleX);
+        }
+        if (!event.ctrlKey) {
+            this.renderer.scaleY = newScaleY;
+            this.renderer.originY -= wy * (newScaleY - oldScaleY);
+
+        }
+
     }
 
 

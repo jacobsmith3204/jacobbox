@@ -7,7 +7,8 @@ export class Renderer {
     elements = [];
     originX;
     originY;
-    scale = 1;
+    scaleX = 1;
+    scaleY = 1;
 
     constructor(canvas) {
         // input
@@ -84,11 +85,12 @@ export class TimelineRenderer extends Renderer {
 
 
         // calculates world offset and gets the canvas position offset (x,y) and saves it as the default
-        const [x, y, scale, em] = [this.xpos(), this.ypos(), this.scale, parseFloat(window.getComputedStyle(document.documentElement).fontSize)];
-        const gridSize = 5 * em * scale;
+        const [x, y, scaleX, scaleY, em] = [this.xpos(), this.ypos(), this.scaleX, this.scaleY, parseFloat(window.getComputedStyle(document.documentElement).fontSize)];
+        const gridSizeX = 5 * em * scaleX;
+        const gridSizeY = 5 * em * scaleY;
 
-        ctx.scale(scale, scale);
-        ctx.translate(x / scale, y / scale);// center canvas
+        ctx.scale(scaleX, scaleY);
+        ctx.translate(x / scaleX, y / scaleY);// center canvas
 
         this.ctx.font = "2em serif";
         ctx.save();
@@ -114,8 +116,8 @@ export class TimelineRenderer extends Renderer {
         function DrawGrid() {
 
             canvas.style = ` background: 
-            repeating-linear-gradient(90deg,  transparent 0px, rgba(0, 0, 0, 0.13) 2px, transparent 0px, transparent ${gridSize}px)   
-            ${x % gridSize}px ${y % gridSize}px`;
+            repeating-linear-gradient(90deg,  transparent 0px, rgba(0, 0, 0, 0.13) 2px, transparent 0px, transparent ${gridSizeX}px)   
+            ${x % gridSizeX}px ${y % gridSizeX}px`;
         }
 
         function DrawElements() {
@@ -127,53 +129,57 @@ export class TimelineRenderer extends Renderer {
 
         function drawAxisScale() {
             const roundingMargins = [1, 2, 5, 10, 20, 50, 100];
-            var axisScale = 1;
-            for (const margin of roundingMargins) {
-                // if the scale gets too cramped
-                if (gridSize * axisScale  > (2 * em))
-                    break;
-                axisScale = margin;
-            }
-
-            
 
             drawAxisScaleX();
             drawAxisScaleY();
 
-
-
             function drawAxisScaleX() {
+                const axisScale = GetAxisScale(gridSizeX); 
+
+
                 // get grid bounds 
 
                 ctx.resetTransform();
-                const count = Math.ceil(canvas.width / gridSize / axisScale);
+                const count = Math.ceil(canvas.width / gridSizeX / axisScale);
                 // calculate start based on position where the canvas is positioned in the world, then draw from where it intersects the screen. 
-                const offset = (x / gridSize % axisScale);
-                const start = -x / gridSize / axisScale;
+                const offset = (x / gridSizeX % axisScale);
+                const start = -x / gridSizeX / axisScale;
 
                 // draws only the amount needed to fit on screen
                 for (let i = 0; i <= count; i++) {
-                    const charX = (offset + (i * axisScale)) * gridSize;
+                    const charX = (offset + (i * axisScale)) * gridSizeX;
                     const charY = 2 * em;
                     ctx.fillText(`${(Math.trunc(start) + i) * axisScale}`, charX, charY);
                 }
             }
 
             function drawAxisScaleY() {
+                const axisScale = GetAxisScale(gridSizeY); 
+
                 // get grid bounds 
 
                 ctx.resetTransform();
-                const count = Math.ceil(canvas.height / gridSize / axisScale);
+                const count = Math.ceil(canvas.height / gridSizeY / axisScale);
                 // calculate start based on position where the canvas is positioned in the world, then draw from where it intersects the screen. 
-                const offset = (y / gridSize % axisScale);
-                const start = -y / gridSize / axisScale;
+                const offset = (y / gridSizeY % axisScale);
+                const start = -y / gridSizeY / axisScale;
 
                 // draws only the amount needed to fit on screen
                 for (let i = 0; i <= count; i++) {
                     const charX = em;
-                    const charY = (offset + (i * axisScale)) * gridSize ;
+                    const charY = (offset + (i * axisScale)) * gridSizeY;
                     ctx.fillText(`${(Math.trunc(start) + i) * axisScale}`, charX, charY);
                 }
+            }
+            function GetAxisScale(gridSize) {
+                var axisScale = 1;
+                for (const margin of roundingMargins) {
+                    // if the scale gets too cramped
+                    if (gridSize * axisScale > ((1 + (`${axisScale}`).length) * em))
+                        return axisScale;
+                    axisScale = margin;
+                }
+                return axisScale; 
             }
         }
     }
