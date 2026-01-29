@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
 
 body {
@@ -29,7 +28,8 @@ body {
     repeating-linear-gradient(0deg, rgba(0, 0, 0, .04) 0px, rgba(0, 0, 0, .04) 1px, transparent 1px, transparent 20px),
     repeating-linear-gradient(90deg, rgba(0, 0, 0, .04) 0px, rgba(0, 0, 0, .04) 1px, transparent 1px, transparent 20px);
 }
-#timelineCanvas {  
+
+#timelineCanvas {
   width: 100%;
   height: 100%;
 
@@ -45,13 +45,13 @@ h1 {
   gap: 0.5rem;
 }
 
-h4{
+h4 {
   margin: 0;
   text-align: center;
 }
 
 
-.fa-solid.fa-plus{
+.fa-solid.fa-plus {
   aspect-ratio: 1;
 }
 
@@ -61,54 +61,111 @@ h4{
   background-color: lightgrey;
   box-sizing: border-box;
 }
-#topbar > * {
+
+#topbar>* {
   margin: 0.3em;
 }
 
 #bottombar {
+  display: grid;
   margin-top: auto;
   background-color: lightgrey;
+  gap: 0.3em;
+  box-sizing: border-box;
 }
-#bottombar > * {
-  margin: 0.3em;
+
+#bottombar>* {
+  width: 100%;
+  margin-block: 0.3em;
 }
+
+
+
+#bottombar :first-child {
+  margin-inline-start: 0.3em;
+}
+
+#bottombar :last-child {
+  margin-inline-end: 0.3em;
+}
+
 #saveButton {
   width: 100%;
 }
 
 
-input, select {
+input,
+select,
+button {
   box-sizing: border-box;
   border-style: none;
   border-radius: 0.5em;
   font-size: inherit;
 }
 
-settings {
-  padding-inline: 0.5em;
+input:hover,
+select:hover,
+button:hover {
+  background-color: rgb(255, 255, 255) !important;
+}
+
+input:active,
+select:hover,
+button:hover {
+  background-color: rgb(185, 185, 185) !important;
 }
 
 
 
+settings {
+  padding-inline: 0.5em;
+}
+
+#loading-icon {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  border: 4px solid transparent;
+  border-top: 4px solid #0074d9;
+  /* Replace with your desired color */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  transition: opacity 0.5s ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
 
 
-ul#animVals{
+
+ul#animVals {
   display: flex;
   flex-direction: column;
   list-style-type: none;
   padding-inline: 1em;
 }
 
-ul#animVals > * {
+ul#animVals>* {
   display: inline-flex;
   white-space: nowrap;
-  
+
   border-radius: 0.4em;
-  padding: 0.2em; 
+  padding: 0.2em;
   margin: 0.2em;
   background: rgb(170, 170, 170);
-    
+
 }
+
 
 
 colorSwatch {
@@ -122,19 +179,20 @@ colorSwatch {
 }
 
 
-#timelineSidebar{
+#timelineSidebar {
   display: flex;
   flex-direction: column;
   gap: 0.5em;
 
   background-color: grey;
 }
-#timelineSidebar span{
-    width: 100%;
-    height: max-content;
-    box-sizing: content-box;
-    display: inline-flex;
-    gap: 0.5em;
+
+#timelineSidebar span {
+  width: 100%;
+  height: max-content;
+  box-sizing: content-box;
+  display: inline-flex;
+  gap: 0.5em;
 }
 
 #timelineSidebar span>* {
@@ -143,53 +201,22 @@ colorSwatch {
 }
 
 
-#objectDropdown{
-    width: 100% !important;
+#objectDropdown {
+  width: 100% !important;
 }
 
 
 
-span{
+span {
   display: block;
   width: max-content;
 }
 
 /*doesn't seem to work*/
-select option[value="addObject"]{
+select option[value="addObject"] {
   color: rgb(67, 208, 233) !important;
   text-decoration: underline !important;
 }
-
-
-
-
-
-/*
-@keyframes animate1 {
-  0%   {transform: translateX(0) translateY(0); }
-  100% {transform: translateX(10em) translateY(10em);}
-}
-
-@keyframes animate2 {
-  0%   {transform: translateX(6em) translateY(3em); }
-  100% {transform: translateX(16em) translateY(10em);}
-}*/
-
-/*@keyframes animate1 {
-  0%, 50% { transform: translateX(0); }
-  25% { transform: translateX(10em) translateY(10rem) ; }
-  100% { transform: translateX(0); }
-}
-
-@keyframes animate2 {
-  0%, 50% { opacity: 1; }
-  75% { opacity: 0; }
-  100% { opacity: 1; }
-}*/
-
-
-
-
 
 
 #object {
@@ -202,33 +229,63 @@ select option[value="addObject"]{
 }
 
 
+
+
+
+
+
+#saveButton {
+  width: 100%;
+}
+
+
+#popup {
+  position: fixed;
+
+  top: 0;
+  left: 0;
+  transform: none; 
+  
+  border-radius: 0.5em;
+  border-style: none;
+  padding: 0.2em;
+  background-color: lightgrey;
+  box-sizing: border-box;
+}
+
+#popupOptions {
+  margin-block: 0.1em;
+  display: block; 
+  width: min-content; 
+  gap: 0.2em;
+}
+
+#popupOptions>button {
+  width: 100%;
+  background: transparent;
+  white-space: nowrap;
+  text-align: left;
+}
+
+
+
+
+
 @property --tx {
   syntax: '<length>';
   inherits: true;
-  initial-value: 100px;
+  initial-value: 0px;
 }
 
 @keyframes tx0 {
   to {
-    --tx: 0px
+    --tx: 8.083966073251029px;
   }
 }
 
 @keyframes tx1 {
   to {
-    --tx: 20px
-  }
-}
-
-@keyframes tx2 {
-  to {
-    --tx: -20px
-  }
-}
-
-@keyframes tx3 {
-  to {
-    --tx: 40px
+    --tx: 9.260926045293525px;
   }
 }
 
@@ -245,63 +302,31 @@ select option[value="addObject"]{
 }
 
 @property --scaleX {
-  syntax: '<length>';
+  syntax: '<number>';
   inherits: true;
-  initial-value: 0px;
+  initial-value: 1;
 }
 
 @property --scaleY {
-  syntax: '<length>';
+  syntax: '<number>';
   inherits: true;
-  initial-value: 0px;
+  initial-value: 1;
 }
 
-
 #object {
-  /* Combine both transforms from vars */
-  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r));
-  /* Run both animations together */
-  animation: 
-  tx0 210ms cubic-bezier(0.047619047619047616, 0, 0.9523809523809523, 1) 0ms forwards,
-  tx1 90ms cubic-bezier(0.1111111111111111, 0, 0.8888888888888888, 1) 210ms forwards,
-  tx2 200ms cubic-bezier(0.05, 0, 0.95, 1) 300ms forwards;
-
+  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r)) scaleX(var(--scaleX)) scaleY(var(--scaleY));
+  animation: tx1 4.64704373190194s cubic-bezier(0.10231286748247514, 172.71916280658743, 0.9082823838281397, -3.4570186918136785) 0.030029892144931965s forwards;
   animation-iteration-count: 1;
   animation-composition: add;
-  /*animation-play-state: paused;*/
 }
 
 
 
-
-
-
-
-/*
-
-#object {
-  /* Combine both transforms from vars * /
-  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r)); 
-  /* Run both animations together * /
-  animation: 
-    moveX 2s cubic-bezier(.31, .92, .75, .08) forwards,
-    moveY 2s ease-in-out forwards , 
-    moveX2 2s cubic-bezier(.31, .92, .75, .08) 2s forwards,
-    moveY2 2s ease-in-out  2s forwards, 
-    rotate 2s ease-in-out 2s forwards, 
-    moveX3 0.5s ease-out 4s forwards; 
-
-  animation-composition: add;
-  animation-play-state:paused;
+#object:focus {
+  animation: none;
 }
 
-#object:focus {  
-    /*animation: moveX 2s ease-out forwards !important; * /
-    
-    animation: none;
-  
-}
+
 #object:hover {
-  animation-play-state:running;
+  animation-play-state: paused;
 }
-*/

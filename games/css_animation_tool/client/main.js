@@ -1,23 +1,40 @@
 import { TimelineRenderer } from "./renderer.js";
+// initialises some stuff
 import { } from "./core/objects.js";
-import { } from "./core/drawingFunctions.js"; // initialises some stuff 
-import {LoadFromLocalStorage, SaveToLocalStorage} from "./core/io_localStorage.js";
-import { GenerateCSS } from "./core/exporter.js";
-import {  } from "./interface/interfaceBuilder.js";
-import {AnimationTimeline} from "./core/animation.js";
+import { } from "./core/drawingFunctions.js";  
+// load and save scripts
+import { SaveAsFile, SaveToLocalStorage } from "./core/export_import/Export.js";
+import { loadFromFile, LoadFromLocalStorage, loadToTimelineFromFile } from "./core/export_import/Import.js";
+import { GenerateCSS } from "./core/export_import/ExportCSS.js";
+
+// 
+import { UpdateDocumentToCurrentAnimation , UpdateDocumentToExistingProperties} from "./interface/interfaceBuilder.js";
+import { AnimationTimeline } from "./core/animation.js";
 
 
-// add functionallity to buttons 
-const addObjectButton = document.getElementById("addObjectButton");
-const addObjectForm = document.getElementById("addObjectForm");
-const newObjectIdInput = document.getElementById("newObjectId");
-const saveButton = document.getElementById("saveButton");
 
 
-addObjectButton.addEventListener('click', ()=> console.warn("button does nothing..."));
 
 
-saveButton.addEventListener("click", () => {
+
+const renderer = window.renderer = new TimelineRenderer(document.getElementById("timelineCanvas"));
+const timeline = window.timeline = new AnimationTimeline(document.getElementById("object"));
+renderer.timeline = timeline;
+
+
+
+
+
+document.getElementById("loadFileBtn").addEventListener("click", () => {
+   loadToTimelineFromFile(timeline); 
+});
+
+document.getElementById("saveFileBtn").addEventListener("click", () => {
+   SaveAsFile(timeline); 
+});
+
+// click generates css and writes it to the clipboard 
+document.getElementById("copyCssBtn").addEventListener("click", () => {
     SaveToLocalStorage(timeline); // saved version will be in json
     // copied version is the full css to paste
     const cssText = GenerateCSS(timeline);
@@ -28,20 +45,32 @@ saveButton.addEventListener("click", () => {
 
 
 
-const renderer = window.renderer = new TimelineRenderer(document.getElementById("timelineCanvas"));
-const timeline = window.timeline = new AnimationTimeline(document.getElementById("object"));
 
 
-LoadFromLocalStorage(timeline);
+const useLocalStorage = true;
+console.log(` ${useLocalStorage? "loading from local storage": "creating new using document to get properties"}`); 
+
+if (useLocalStorage){
+    LoadFromLocalStorage(timeline);
+    UpdateDocumentToCurrentAnimation(timeline);
+}
+else{
+    UpdateDocumentToExistingProperties(timeline); 
+    timeline.properties["tx"].addKeyframe(0,1);
+    timeline.properties["tx"].addKeyframe(1,2);
+}
+
+   
+
+
+// TODO: add playback feature. 
 
 
 
-/*
-timeline.properties["tx"].addKeyframe(1,1);
-timeline.properties["tx"].addKeyframe(100,1);
-*/
-
-console.log(timeline.properties["tx"]);
 
 
 
+
+
+// adds some extra functionality to the console. 
+window.clearKeyframes = ()=> Object.values(renderer.timeline.properties).map(property => property.keyframes = []); 

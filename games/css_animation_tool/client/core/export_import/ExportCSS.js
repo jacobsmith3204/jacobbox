@@ -1,14 +1,13 @@
-
 // handles the exporting of the animation curves to css
-var globalChanges = {}; 
+var globalChanges = {};
 export function GenerateCSS(animationTimeline, _globalChanges = {}) {
-    globalChanges = _globalChanges; 
+    globalChanges = _globalChanges;
 
     var cssStringbuilder = [];
     var cssAnimationStringbuilder = [];
     // retrieve the AnimVal values and calls toString
 
-    const properties = Object.values(animationTimeline.properties); 
+    const properties = Object.values(animationTimeline.properties);
 
     for (const property of properties) {
         console.log(property);
@@ -21,7 +20,7 @@ export function GenerateCSS(animationTimeline, _globalChanges = {}) {
     }
     // adds the portion of the code that maps the variables to the transform/color/etc 
     const targets = bindTargets(properties);
-    
+
 
     // final string of everything for this one timeline ready to copy into the css file. 
     return `
@@ -29,7 +28,7 @@ export function GenerateCSS(animationTimeline, _globalChanges = {}) {
         #${animationTimeline.id} {
             ${targets}
             animation: ${cssAnimationStringbuilder.filter(Boolean).join(',')};
-            animation-itteration-count: ${animationTimeline.canLoop ? "infinite" : "1"}; 
+            animation-iteration-count: ${animationTimeline.canLoop ? "infinite" : "1"}; 
             animation-composition: ${animationTimeline.animationComposition}; 
         }
     `;
@@ -60,51 +59,53 @@ function bindTargets(properties) {
 
 
 function propertyString(property) {
-    return `@property ${property.name} { syntax: '<${property.syntax}>'; inherits: true; initial-value:${property.initialValue}${property.typeExtention} }`;
+    return `@property --${property.name} { syntax: '<${property.syntax}>'; inherits: true; initial-value:${property.initialValue}${property.typeExtention || ""}; }`;
 
 }
 function keyframesString(property) {
     const keyframes = property.keyframes;
     const list = [];
     for (var i = 0; i < keyframes.length; i++) {
-        list.push(`@keyframes ${property.name}${i} {to {--${property.name}:${keyframes[i].anchor.y}${property.extention} }}`);
+        list.push(`@keyframes ${property.name}${i} {to {--${property.name}:${keyframes[i].anchor.y}${property.typeExtention || ""}; }}`);
     }
     return list.join("\n");
 }
 
+const frameTime = (1 / 60);
 
 function animationString(property) {
     // calculates 
     const list = [];
     const keyframes = property.keyframes;
 
-    for (var i = 0; i < keyframes.length; i++) {
-        const secondsToNextKeyframe = CalculateSecondsToNextFrame(keyframes[i], keyframes[i + 1] || undefined);
-        const curve = CalculateCurve(keyframes[i], keyframes[i + 1] || undefined);
-        const offset = CalculateOffset(keyframes[i]);
+    for (var i = 1; i < keyframes.length; i++) {
+        const secondsFromLastKeyFrame = CalculateSecondsToNextFrame(keyframes[i - 1] || undefined, keyframes[i]);
+        const curve = CalculateCurve(keyframes[i - 1] || undefined, keyframes[i]);
+        const offset = CalculateOffset(keyframes[i - 1]);
 
-        list.push(`${property.name}${i} ${secondsToNextKeyframe}ms ${curve} ${offset}ms forwards`);
+        list.push(`${property.name}${i} ${secondsFromLastKeyFrame}s ${curve || "ease"} ${offset}s forwards`);
     }
     return list.filter(Boolean).join(`,`);
 
 
 
     // some helper functions for generating the correct values; 
+
     function CalculateOffset(keyframe1) {
-        return (globalChanges?.["offset"] || 0) + keyframe1.anchor.x;
+        return (globalChanges?.["offset"] || 0) + keyframe1.anchor.x * frameTime;
     }
     function CalculateSecondsToNextFrame(frame1, frame2) {
-        if (!frame2)
+        if (!frame1 || !frame2)
             return 0;
-        var node1x = frame1.anchor.x;
-        var node2x = frame2.anchor.x;
-        return node2x - node1x;
+        const n1 = frame1.anchor;
+        const n2 = frame2.anchor;
+        return (n2.x - n1.x) * frameTime;
     }
 
     // curve to css besier-curve 
     function CalculateCurve(frame1, frame2) {
 
-        if (!frame2)
+        if (!frame1 || !frame2)
             return;
 
         const p1 = frame1.anchor;
