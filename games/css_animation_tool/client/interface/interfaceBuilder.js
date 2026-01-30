@@ -153,7 +153,7 @@ popup.addEventListener('cancel', (e) => {
 });
 
 
-export function ShowContextMenu(event) {
+export function ShowContextMenu(event, buttons) {
     event.preventDefault();
     // place at cursor  
     console.log(event);
@@ -163,14 +163,6 @@ export function ShowContextMenu(event) {
     const dx = event.clientX - (window.innerWidth / 2);
     const dy = event.clientY - (window.innerHeight / 2);
     popup.style.transform = `translate(${dx}px, ${dy}px)`;
-
-
-    // get buttons from context; 
-    const buttons = [
-        { label: 'Add node', onClick: () => alert('Option 1 clicked') },
-        { label: 'Remove node', onClick: () => alert('Option 2 clicked') }, 
-    ];
-
 
     // Clear previous button elements
     const btnContainer = document.getElementById("popupOptions");

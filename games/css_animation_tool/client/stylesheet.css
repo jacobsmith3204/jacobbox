@@ -268,58 +268,24 @@ select option[value="addObject"] {
 }
 
 
+        @property --tx { syntax: '<length>'; inherits: true; initial-value:0px; }
+@keyframes tx0 {to {--tx:-46.163512470375906px; }}
+@keyframes tx1 {to {--tx:45.45953197555643px; }}
+@property --ty { syntax: '<length>'; inherits: true; initial-value:0px; }
 
+@property --r { syntax: '<angle>'; inherits: true; initial-value:0deg; }
 
+@property --scaleX { syntax: '<number>'; inherits: true; initial-value:1; }
 
-@property --tx {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: 0px;
-}
+@property --scaleY { syntax: '<number>'; inherits: true; initial-value:1; }
 
-@keyframes tx0 {
-  to {
-    --tx: 8.083966073251029px;
-  }
-}
-
-@keyframes tx1 {
-  to {
-    --tx: 9.260926045293525px;
-  }
-}
-
-@property --ty {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: 0px;
-}
-
-@property --r {
-  syntax: '<angle>';
-  inherits: true;
-  initial-value: 0deg;
-}
-
-@property --scaleX {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 1;
-}
-
-@property --scaleY {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 1;
-}
-
-#object {
-  transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r)) scaleX(var(--scaleX)) scaleY(var(--scaleY));
-  animation: tx1 4.64704373190194s cubic-bezier(0.10231286748247514, 172.71916280658743, 0.9082823838281397, -3.4570186918136785) 0.030029892144931965s forwards;
-  animation-iteration-count: 1;
-  animation-composition: add;
-}
-
+        #object {
+            transform: translateX(var(--tx)) translateY(var(--ty)) rotate(var(--r)) scaleX(var(--scaleX)) scaleY(var(--scaleY));
+            animation: tx1 4.012561344151023s cubic-bezier(0.5589954826209913, -0.48576037445496234, 0.5589954826209913, 3.303458298256519) -0.880463908742801s forwards;
+            animation-iteration-count: 1; 
+            animation-composition: add; 
+        }
+    
 
 
 #object:focus {

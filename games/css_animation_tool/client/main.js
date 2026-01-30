@@ -1,4 +1,4 @@
-import { TimelineRenderer } from "./renderer.js";
+import { TimelineRenderer } from "./core/renderer.js";
 // initialises some stuff
 import { } from "./core/objects.js";
 import { } from "./core/drawingFunctions.js";  
@@ -47,7 +47,7 @@ document.getElementById("copyCssBtn").addEventListener("click", () => {
 
 
 
-const useLocalStorage = true;
+const useLocalStorage = localStorage.getItem("timeline") != null;
 console.log(` ${useLocalStorage? "loading from local storage": "creating new using document to get properties"}`); 
 
 if (useLocalStorage){

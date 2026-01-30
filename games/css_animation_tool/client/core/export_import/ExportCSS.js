@@ -102,6 +102,8 @@ function animationString(property) {
         return (n2.x - n1.x) * frameTime;
     }
 
+
+    /*
     // curve to css besier-curve 
     function CalculateCurve(frame1, frame2) {
 
@@ -119,9 +121,9 @@ function animationString(property) {
 
         // Choose primary axis; here: X
         const x1 = (h1.x - p1.x) / dx;
-        const y1 = (h1.y - p1.y) / dy;
-
         const x2 = (h2.x - p1.x) / dx;
+
+        const y1 = (h1.y - p1.y) / dy;
         const y2 = (h2.y - p1.y) / dy;
 
         // CSS constrains x position
@@ -129,5 +131,39 @@ function animationString(property) {
         const cx2 = Math.max(0, Math.min(1, x2));
 
         return `cubic-bezier(${cx1}, ${y1}, ${cx2}, ${y2})`;
+    }*/
+
+    function CalculateCurve(frame1, frame2) {
+        if (!frame1 || !frame2) return "linear";
+
+        const p1 = frame1.anchor;
+        const h1 = frame1.handleRight;
+        const p2 = frame2.anchor;
+        const h2 = frame2.handleLeft;
+
+        const dx = p2.x - p1.x;
+        if (Math.abs(dx) < 1e-6) return "linear";
+
+        // Normalise X
+        let x1 = (h1.x - p1.x) / dx;
+        let x2 = (h2.x - p1.x) / dx;
+
+        // Enforce monotonic time
+        x1 = Math.max(0, Math.min(1, x1));
+        x2 = Math.max(x1, Math.min(1, x2));
+
+        // Use dy only as scale, never divisor
+        const dy = p2.y - p1.y;
+        const scale = Math.max(Math.abs(dy), 1e-3);
+
+        let y1 = (h1.y - p1.y) / scale;
+        let y2 = (h2.y - p1.y) / scale;
+
+        // Clamp Y to reasonable CSS range
+        y1 = Math.max(-5, Math.min(5, y1));
+        y2 = Math.max(-5, Math.min(5, y2));
+
+        return `cubic-bezier(${x1}, ${y1}, ${x2}, ${y2})`;
     }
 }
+

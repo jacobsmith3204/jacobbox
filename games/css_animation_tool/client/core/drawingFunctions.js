@@ -204,8 +204,9 @@ Object.assign(AnimProperty.prototype, {
     drawTo(renderer) {
         const ctx = renderer.ctx;
         const timeline = renderer.timeline;
+        const keyframes = this.keyframes; 
 
-        if (!this.keyframes || this.keyframes.length <= 0)
+        if (!keyframes || keyframes.length <= 0)
             return;
 
 
@@ -213,21 +214,24 @@ Object.assign(AnimProperty.prototype, {
 
 
         // draw line to first; 
-        const first = this.keyframes[0].anchor;
+        const first = keyframes[0].anchor;
         var pos = renderer.positionOnCanvasWithScale(first.x, first.y);
         ctx.save();
         ctx.resetTransform(); 
         ctx.globalAlpha = 0.2; 
+        ctx.beginPath();
         ctx.moveTo(0, pos.y);
         ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
         ctx.restore();
 
+        
+    
         // draws the curves.  
-        if (this.keyframes.length > 1){
-            for (let i = 1; i < this.keyframes.length; i++) {
-                const keyframe = this.keyframes[i];
-                const lastKeyframe = this.keyframes[i - 1];
+        if (keyframes.length > 1){
+            for (let i = 1; i < keyframes.length; i++) {
+                const keyframe = keyframes[i];
+                const lastKeyframe = keyframes[i - 1];
                 curve.drawCurve(renderer, lastKeyframe.anchor, lastKeyframe.handleRight || lastKeyframe.anchor, keyframe.handleLeft || keyframe.anchor, keyframe.anchor);
             }
         }
@@ -235,19 +239,20 @@ Object.assign(AnimProperty.prototype, {
         // draws the nodes
         if (this.showHandles) {
             for (const i in this.keyframes) {
-                const keyframe = this.keyframes[i]; 
+                const keyframe = keyframes[i]; 
                 keyframe.anchor?.drawTo(renderer);
 
                 // draws the handles, clips the ones that would be out of bounds
-                if (i + 1 < this.keyframes.length)
+                if (i != this.keyframes.length - 1)
                     keyframe.handleRight?.drawTo(renderer, keyframe.anchor);
                 if (i != 0)
                     keyframe.handleLeft?.drawTo(renderer, keyframe.anchor);
             }
         }
 
+
         // draw line from last 
-        const last = this.keyframes[this.keyframes.length - 1].anchor;
+        const last = keyframes[keyframes.length - 1].anchor;
         pos = renderer.positionOnCanvasWithScale(last.x, last.y);
         ctx.save();
         ctx.resetTransform();
@@ -256,6 +261,5 @@ Object.assign(AnimProperty.prototype, {
         ctx.lineTo(renderer.canvas.width, pos.y);
         ctx.stroke();
         ctx.restore();
-
     }
 });

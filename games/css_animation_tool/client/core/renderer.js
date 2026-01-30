@@ -84,8 +84,26 @@ export class Renderer {
 
 
 
+
+
 export class TimelineRenderer extends Renderer {
     timeline;
+
+    readheadPosX = 0;
+    get readheadYPositions() {
+
+        if (!this.timeline)
+            return;
+
+
+        // returns an array with properties and their y positions at this.readheadPosX; 
+
+        return Object.values(this.timeline.properties).map(property => {
+            return property.sampleAnimation(this.readheadPosX);
+        });
+    }
+
+
 
 
     renderLoop() {
@@ -117,8 +135,9 @@ export class TimelineRenderer extends Renderer {
         DrawTimelineProperties();
         // draws the numbers along the axes. 
 
-
+        DrawReadhead();
         DrawAxisScale();
+
         this.input.stateSystem.call("update");
 
         // invokes the next render loop// could defer to a promise/timer, to set a fixed framerate. 
@@ -145,7 +164,7 @@ export class TimelineRenderer extends Renderer {
         }
 
         function DrawAxisScale() {
-           
+
             ctx.fillStyle = "#000";
 
             DrawAxisScaleX();
@@ -186,6 +205,31 @@ export class TimelineRenderer extends Renderer {
                     ctx.fillText(`${(Math.trunc(start) - i) * axisScale}`, charX, charY);
                 }
             }
+        }
+        function DrawReadhead() {
+
+
+            // 
+            const sx = renderer.input.mouseX;   
+            const sy = Object.values(renderer.timeline.properties)[0].sampleAnimation(sx / gridSizeX ) * gridSizeY; 
+
+            
+
+            
+            const pos = { x: sx + renderer.xpos , y:  sy + renderer.ypos}
+
+            ctx.save();
+            ctx.resetTransform();
+            ctx.strokeStyle = '#000'; 
+            ctx.globalAlpha = 0.2;
+            ctx.drawCenteredRotatedRect(pos.x, pos.y , 10, 10, 0);
+
+
+            ctx.moveTo(pos.x, 0);
+            ctx.lineTo(pos.x , canvas.height);
+            ctx.stroke();
+
+            ctx.restore();
         }
 
         function GetAxisScale(_gridSize) {
