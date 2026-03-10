@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="32.4502 19.0313 451.2907 220.4729" width="451.2907px" height="220.4729px">
-  <g transform="matrix(1.9026949405670166, 0, 0, 1.9026949405670166, -249.496826171875, -190.50863647460938)" style="">
-    <path style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0); transform-origin: 157.269px 223.205px 0px;" d="M 161.231 113.325 L 174.278 197.233 L 191.053 198.832 L 148.183 226.002 L 228.798 201.229 L 360.671 207.622 L 385.368 110.128 C 385.368 110.128 162.163 113.725 161.231 113.325 Z"/>
-    <text style="white-space: pre; fill: rgb(51, 51, 51); font-family: &quot;Arial&quot;, sans-serif; font-size: 28px; text-anchor: middle;" x="270.05" y="164.337">hello world</text>
-  </g>
-</svg>
