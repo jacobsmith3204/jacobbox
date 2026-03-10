@@ -1,7 +1,6 @@
 class BaseClient {
     socket;
 
-    z
     ConnectToServer() {
         this.socket = new WebSocket("/socket");
         this.socket.addEventListener('message', this.OnMessage.bind(this));
@@ -20,11 +19,5 @@ class BaseClient {
 
     OnMessage(event){
         console.log("on message not implemented",event.data); 
-        
-
-
-
     }
-
 }
-

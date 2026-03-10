@@ -1,13 +1,18 @@
 class SigninForm {
   messageEl;
   codeInputEl;
+  usernameInputEl; 
   constructor() {
     this.messageEl = document.getElementById('message');
     this.codeInputEl = document.getElementById('gameCodeInput');
+    this.usernameInputEl = document.getElementById('username');
   }
 
   GetCode() {
     return this.codeInputEl.value.trim();
+  } 
+  GetUserName() {
+    return this.usernameInputEl.value.trim();
   }
   ValidateCode(code) {
     const codePattern = /^[A-Za-z0-9]{4,10}$/;
