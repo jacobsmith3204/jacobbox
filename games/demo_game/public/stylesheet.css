@@ -9,6 +9,11 @@
      height: 100vh;
  }
 
+ #users > img {
+    width: 4rem;
+    height: 4rem;
+}
+
  .game-container {
      background-color: #fff;
      padding: 30px;

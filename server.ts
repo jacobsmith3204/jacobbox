@@ -20,8 +20,8 @@ import { Socket } from 'dgram';
 const PORT = 8000;
 const WEBSITE_FILE_DIR = path.join(__dirname, 'website'); // Directory to stored game files
 const GAME_CLIENT_FILE_DIR = path.join(__dirname, 'games'); // Directory to stored game files
-const SERVER_CERT_DIR = process.env.SERVER_CERT_DIR; // Directory to stored game files
-const SERVER_KEY_DIR = process.env.SERVER_KEY_DIR; // Directory to stored game files
+const SERVER_CERT_DIR = process.env.SERVER_CERT_DIR ?? ""; // Directory to stored game files
+const SERVER_KEY_DIR = process.env.SERVER_KEY_DIR ?? ""; // Directory to stored game files
 
 var GAME_ROOMS: Map<String, GameRoom> = new Map<String, GameRoom>();
 
@@ -37,7 +37,7 @@ const server = https.createServer(options, function handleServerRequests(req, re
     // handles the server requests, finds the closest matching context class instance from 'contexts' and uses it to handle the server
     console.log("new http request... ")
     var client = new TcpClient(req, res);
-    var context = findContext(client.url.pathname);
+    var context = findContext(client.url.pathname?? "");
     context.Handle(client);
 });
 

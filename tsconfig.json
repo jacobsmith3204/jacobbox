@@ -16,6 +16,7 @@
     },
     "compilerOptions": {
       // typescript options here
+       "types": ["node"], 
        "target": "es2022",
        "module": "NodeNext",
        "moduleResolution": "NodeNext"

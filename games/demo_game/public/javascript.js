@@ -1,3 +1,4 @@
+/*
 const form = document.getElementById("gameForm");
 const message = document.getElementById("message");
 
@@ -64,3 +65,9 @@ function message(data){
 
 const game = new Game();
 game.ConnectToServer();
+
+
+
+*/
+
+alert("loaded js");

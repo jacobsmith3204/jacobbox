@@ -9,10 +9,10 @@ import { Duplex } from 'stream';
 import { send } from 'process';
 
 // server.contexts are added to this
-export const contexts = {};
+export const contexts: {[key: string]: BaseHandler}= {};
 
 // searches the contexts keys to find the closest matching value, required to completely match the context string. 
-export function findContext(target): BaseHandler {
+export function findContext(target: string): BaseHandler {
     var closestMatch = 0;
     var closestVal = 100000;
     var currentVal;
@@ -91,8 +91,8 @@ export class TcpClient {
     url: url.UrlWithParsedQuery;
     queries;
 
-    body: string;// text version of post request body
-    data: object;// json version of post request body
+    body!: string;// text version of post request body
+    data!: object;// json version of post request body
 
     constructor(req: IncomingMessage, res: ServerResponse<IncomingMessage>) {
         this.req = req; //request data 

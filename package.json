@@ -12,16 +12,17 @@
   },
   "license": "ISC",
   "author": "jacob",
-  "type": "commonjs",
+  "type": "nodenext",
   "main": "server.ts",
   "scripts": {
     "start": "npx vite-node server.ts",
-    "host:demo": "npx vite-node games/demo_game/server/demo_game_server.ts"
+    "host:demo": "npx vite-node games/demo_game/demo_game_server.ts https://jacobsmith3204.ngrok.io/peer_server"
   },
   "devDependencies": {
-    "@types/node": "^24.5.2"
+    "@types/node": "^24.13.3"
   },
   "dependencies": {
+    "@koush/wrtc": "^0.5.3",
     "dotenv": "^17.2.2",
     "vite": "^7.3.1",
     "ws": "^8.18.3"
