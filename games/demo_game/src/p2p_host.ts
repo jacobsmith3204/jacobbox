@@ -8,23 +8,23 @@ const { RTCPeerConnection, RTCSessionDescription, WebRtcHttpBridge } = require('
 
 
 
-type iceServers =  {urls: string | string[], username?:string, credential?:string }
+type iceServers = { urls: string | string[], username?: string, credential?: string }
 
 const peerConfiguration = {
- iceServers: [
-    {
-      // Primary standard Google STUN server
-      urls: 'stun:stun.l.google.com:19302' 
-    },
-    {
-      // Alternative fallback Google STUN configurations
-      urls: [
-        'stun:stun1.l.google.com:3478',
-        'stun:stun2.l.google.com:19302'
-      ]
-    }, 
-  ]
-} satisfies {iceServers: iceServers[]}
+    iceServers: [
+        {
+            // Primary standard Google STUN server
+            urls: 'stun:stun.l.google.com:19302'
+        },
+        {
+            // Alternative fallback Google STUN configurations
+            urls: [
+                'stun:stun1.l.google.com:3478',
+                'stun:stun2.l.google.com:19302'
+            ]
+        },
+    ]
+} satisfies { iceServers: iceServers[] }
 
 
 
@@ -135,8 +135,9 @@ async function finaliseClientConnection(message: any) {
             sdpMLineIndex: c.sdpMLineIndex ?? 0
         };
         //console.log("Adding ICE:", ice);
-         peerConnection.addIceCandidate(ice).catch((err) => {
+        peerConnection.addIceCandidate(ice).catch((err) => {
             console.error("Failed to add ICE candidate:", err, ice);
+
         });
     }
 }
