@@ -1,4 +1,4 @@
-import { P2PHost } from './P2Phost';
+import { P2PHost } from './p2p_host';
 
 class User {
     id;
@@ -133,7 +133,7 @@ const game = new FizzBuzzGame();
 
 //@ts-ignore
 const args = process.argv.slice(2);
-const backup_server_url = 'wss://localhost:8000/socket';
+const backup_server_url = 'wss://localhost:8000/peer_server';
 const server_url = args[0] ?? backup_server_url;
 
 game.start(server_url);

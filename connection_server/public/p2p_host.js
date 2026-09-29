@@ -4,8 +4,38 @@ const peer_host_wss_url = `wss://${locationHost}/peer_server`;
 // creates a configuration for the connection 
 
 
+
+
+const peerConfiguration = {
+    'iceServers': [
+    {
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    ]
+} 
+
 class Host {
-    static configuration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
+    
     static connected_clients = {};
     static signalingChannel; // websocket channel for setup/ comunication with the server
 
@@ -48,7 +78,7 @@ class Host {
     static async returnOfferToClient(message) {
         console.log("sending offer to new client", message.id);
         // creates a new connection to the client
-        const peerConnection = new RTCPeerConnection(Host.configuration);
+        const peerConnection = new RTCPeerConnection(peerConfiguration);
         // adds the new connection to the list. 
         Host.connected_clients[message.id] = peerConnection;
 
@@ -101,13 +131,7 @@ class Host {
     OnHostMessage(event) {
         console.log("host Received:", event.data);
     }
-
 }
-
-
-
-
-
 
 
 

@@ -17,8 +17,6 @@ type iceServers =  {urls: string , username?:string, credential?:string }
 
 const peerConfiguration = {
     'iceServers': [
-        { urls: "stun:stun.l.google.com:19302"}, 
-       
     {
       urls: "stun:stun.relay.metered.ca:80",
     },
@@ -42,7 +40,6 @@ const peerConfiguration = {
       username: "cdae4cba9d10986d8368192c",
       credential: "0E4wUEGm3H1XgUUG",
     },
-
     ]
 } satisfies {iceServers: iceServers[]}
 
@@ -170,7 +167,7 @@ const httpProxyDataChannel = (dc: RTCDataChannel) => {
         // assumes data is in json format
         const req = JSON.parse(msg.data);
         console.log(req);
-        const filePath = path.join(__dirname, "public", req.path ?? "NO_PATH_PROVIDED");
+        const filePath = path.join(__dirname, "../public", req.path ?? "NO_PATH_PROVIDED");
 
         try {
             // fetchs the file and returns it

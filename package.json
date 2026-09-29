@@ -15,17 +15,20 @@
   "type": "nodenext",
   "main": "server.ts",
   "scripts": {
-    "start": "npx vite-node server/server.ts",
-    "host:demo_remote": "npx vite-node games/demo_game/demo_game_server.ts https://jacobsmith3204.ngrok.io/peer_server", 
-    "host:demo_local": "npx vite-node games/demo_game/demo_game_server.ts"
+    "host": "npx vite-node connection_server/src/host_server.ts",
+    "demo:remote": "npx vite-node games/demo_game/src/demo_game_server.ts https://jacobsmith3204.ngrok.io/peer_server",
+    "demo:local": "npx vite-node games/demo_game/src/demo_game_server.ts"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3"
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^24.13.3",
+    "@types/ws": "^8.18.2",
+    "mime-types": "^3.0.2",
+    "ws": "^8.22.0"
   },
   "dependencies": {
     "@koush/wrtc": "^0.5.3",
     "dotenv": "^17.2.2",
-    "vite": "^7.3.1",
-    "ws": "^8.18.3"
+    "vite": "^7.3.1"
   }
 }

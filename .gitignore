@@ -1,5 +1,6 @@
 .env
 hidden/*
+certs/*
 node_modules/*
 build/*
 csFiles/*
