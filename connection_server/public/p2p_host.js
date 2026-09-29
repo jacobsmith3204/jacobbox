@@ -1,6 +1,7 @@
 // creates a configuration for the connection 
 class Host {
-    static configuration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
+    // fallback google stun server
+    static peerConfiguration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
     static connected_clients = {};
     static signalingChannel; // websocket channel for setup/ comunication with the server
 
@@ -61,7 +62,7 @@ async function returnOfferToClient(message) {
     console.log("sending offer to new client", message.id);
     // creates a new connection to the client
 
-    const peerConnection = new RTCPeerConnection(P2PHost.configuration);
+    const peerConnection = new RTCPeerConnection(Host.peerConfiguration);
 
     // adds the new connection to the list. 
     P2PHost.connected_clients[message.id] = peerConnection;
@@ -72,6 +73,9 @@ async function returnOfferToClient(message) {
     // creates an offer with the data given
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+
+
+
 
     //then send the offer to the main server
     P2PHost.signalingChannel.send(JSON.stringify({ 'offer': offer, "host": message.host, "id": message.id }));
@@ -95,8 +99,9 @@ async function finaliseClientConnection(message) {
             sdpMid: c.sdpMid ?? null,
             sdpMLineIndex: c.sdpMLineIndex ?? 0
         };
-        //console.log("Adding ICE:", ice);
-        peerConnection.addIceCandidate(ice);
+        peerConnection.addIceCandidate(ice).catch((err) => {
+            console.error("Failed to add ICE candidate:", err, ice);
+        });
     }
 }
 

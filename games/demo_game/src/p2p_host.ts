@@ -23,34 +23,7 @@ const peerConfiguration = {
         'stun:stun2.l.google.com:19302'
       ]
     }, 
-     {
-      urls: "stun:stun.relay.metered.ca:80",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turns:global.relay.metered.ca:443?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
   ]
-
-
-
-    
 } satisfies {iceServers: iceServers[]}
 
 
@@ -162,7 +135,9 @@ async function finaliseClientConnection(message: any) {
             sdpMLineIndex: c.sdpMLineIndex ?? 0
         };
         //console.log("Adding ICE:", ice);
-        peerConnection.addIceCandidate(ice);
+         peerConnection.addIceCandidate(ice).catch((err) => {
+            console.error("Failed to add ICE candidate:", err, ice);
+        });
     }
 }
 

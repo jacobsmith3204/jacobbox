@@ -1,9 +1,38 @@
 const peer_client_url = `${location.origin}/peer_client`;
 
+//const peerConfiguration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
+
+const peerConfiguration = {'iceServers': [
+     {
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+    {
+      urls: "turn:oceania.relay.metered.ca:80",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turn:oceania.relay.metered.ca:80?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turn:oceania.relay.metered.ca:443",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turns:oceania.relay.metered.ca:443?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+]};
+// turn:oceania.relay.metered.ca:80
+
 
 
 class Client {
-    static configuration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
+    
 
     // overrideble game client stuff
     OnClientConnection = () => {
@@ -45,7 +74,7 @@ class Client {
 
 
         // creates a peer conection. 
-        const peerConnection = new RTCPeerConnection(Client.configuration);
+        const peerConnection = new RTCPeerConnection(peerConfiguration);
 
         // assigns to the data channel 
         const thisClient = this;
