@@ -1,20 +1,41 @@
 // server url to use as peering service. 
 // needed for nodejs stuff NOT NEEDED IN WEB
 import fs from 'node:fs';
+import { url } from 'node:inspector';
 import path from 'node:path';
 const { RTCPeerConnection, RTCSessionDescription, WebRtcHttpBridge } = require('@koush/wrtc');
 
 
+// loads env file credentials
+const filePath = path.join(__dirname, '..', );
+const file = fs.readFileSync(filePath); 
 
+
+
+type iceServers =  {urls: string }
+
+const peerConfiguration = {
+    'iceServers': [
+        { urls: "stun:stun.l.google.com:19302"}, 
+       
+    ]
+} satisfies {iceServers: iceServers[]}
+
+
+(async () => {
+  const response = await fetch("https://=jacobbox.metered.live/api/v1/turn/credentials?apiKey=pk_live_8a3225892c191c356b6ecb9da8f2fdc80c9b4fe8");
+  const iceServers = await response.json();
+  peerConfiguration.iceServers.push(...iceServers);
+})();
 
 // creates a configuration for the connection 
 export class P2PHost {
-    static configuration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
+
     static connected_clients: { [key: string]: RTCPeerConnection } = {};
     static signalingChannel: WebSocket; // websocket channel for setup/ comunication with the server
 
 
-    static dataChannels: { [key: string]: (socket: RTCDataChannel) => void } = {}; 
+    static dataChannels: { [key: string]: (socket: RTCDataChannel) => void } = {};
 
     constructor() {
         // ADD NEW DATA CHANNELS LIKE THIS
@@ -44,7 +65,7 @@ export class P2PHost {
                 returnOfferToClient(message);
             else if (message.answer)
                 finaliseClientConnection(message);
-            else 
+            else
                 console.warn(event.data);
         });
         // Handle connection open
@@ -55,7 +76,7 @@ export class P2PHost {
         P2PHost.signalingChannel.addEventListener('close', () => {
             console.log('p2p host websocket disconnected, app is closing');
             // exits the program since we are no longer connected to the main server
-            process.exit(0); 
+            process.exit(0);
         });
         // Handle errors
         P2PHost.signalingChannel.addEventListener('error', (error: any) => {
@@ -70,7 +91,7 @@ async function returnOfferToClient(message: any) {
     console.log("sending offer to new client", message.id);
     // creates a new connection to the client
 
-    const peerConnection = new RTCPeerConnection(P2PHost.configuration);
+    const peerConnection = new RTCPeerConnection(peerConfiguration);
 
     // adds the new connection to the list. 
     P2PHost.connected_clients[message.id] = peerConnection;
@@ -112,7 +133,7 @@ async function finaliseClientConnection(message: any) {
 
 // data channel to handle the sw's forward http requests. 
 const httpProxyDataChannel = (dc: RTCDataChannel) => {
-     if (typeof location !== 'undefined') {
+    if (typeof location !== 'undefined') {
         // dont add this if on the web to avoid errors with node:fs and node:path
         return;
     }
@@ -140,7 +161,7 @@ const httpProxyDataChannel = (dc: RTCDataChannel) => {
                 mime: getMime(filePath),
                 body: data.toString("base64")
             }));
-            console.log("sent file to client", filePath );
+            console.log("sent file to client", filePath);
         } catch (e) {
             // if it cant find the file or throws an error sends the appropriate response
             dc.send(JSON.stringify({ ok: false, id: req.id, error: "Not found" }));
