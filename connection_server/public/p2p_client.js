@@ -2,37 +2,39 @@ const peer_client_url = `${location.origin}/peer_client`;
 
 //const peerConfiguration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
 
-const peerConfiguration = {'iceServers': [
-     {
-      urls: "stun:stun.relay.metered.ca:80",
-    },
-    {
-      urls: "turn:oceania.relay.metered.ca:80",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:oceania.relay.metered.ca:80?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:oceania.relay.metered.ca:443",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turns:oceania.relay.metered.ca:443?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-]};
+const peerConfiguration = {
+    'iceServers': [
+        {
+            urls: "stun:stun.relay.metered.ca:80",
+        },
+        {
+            urls: "turn:oceania.relay.metered.ca:80",
+            username: "cdae4cba9d10986d8368192c",
+            credential: "0E4wUEGm3H1XgUUG",
+        },
+        {
+            urls: "turn:oceania.relay.metered.ca:80?transport=tcp",
+            username: "cdae4cba9d10986d8368192c",
+            credential: "0E4wUEGm3H1XgUUG",
+        },
+        {
+            urls: "turn:oceania.relay.metered.ca:443",
+            username: "cdae4cba9d10986d8368192c",
+            credential: "0E4wUEGm3H1XgUUG",
+        },
+        {
+            urls: "turns:oceania.relay.metered.ca:443?transport=tcp",
+            username: "cdae4cba9d10986d8368192c",
+            credential: "0E4wUEGm3H1XgUUG",
+        },
+    ]
+};
 // turn:oceania.relay.metered.ca:80
 
 
 
 class Client {
-    
+
 
     // overrideble game client stuff
     OnClientConnection = () => {
@@ -90,6 +92,18 @@ class Client {
                     break;
             }
         }
+
+        peerConnection.addEventListener("icecandidateerror", event => {
+            console.error("ICE candidate error:", {
+                url: event.url,
+                errorCode: event.errorCode,
+                errorText: event.errorText,
+                address: event.address,
+                port: event.port
+            });
+        });
+
+
         // collect ice canadates between the client and the host (uses the offer)
         const candidates = [];
         peerConnection.addEventListener('icecandidate', event => { if (event.candidate) candidates.push(event.candidate); });
@@ -119,6 +133,8 @@ class Client {
                     break;
             }
         });
+
+        await waitForIceConnection(peerConnection); 
     }
 
     // fetch requests a game 
@@ -156,6 +172,50 @@ class Client {
     }
 }
 
+
+
+function waitForIceConnection(peerConnection) {
+    return new Promise((resolve, reject) => {
+        const onStateChange = () => {
+            console.log(
+                "ICE connection state:",
+                peerConnection.iceConnectionState
+            );
+
+            switch (peerConnection.iceConnectionState) {
+                case "connected":
+                case "completed":
+                    cleanup();
+                    resolve();
+                    break;
+
+                case "failed":
+                    cleanup();
+                    reject(new Error("ICE failed to connect"));
+                    break;
+
+                case "closed":
+                    cleanup();
+                    reject(new Error("ICE connection closed"));
+                    break;
+            }
+        };
+
+        const cleanup = () => {
+            peerConnection.removeEventListener(
+                "iceconnectionstatechange",
+                onStateChange
+            );
+        };
+
+        peerConnection.addEventListener(
+            "iceconnectionstatechange",
+            onStateChange );
+
+        // Handle the possibility that it is already in a useful state.
+        onStateChange();
+    });
+}
 
 // connects the service worker to allow fetch requests to */p2p/* to use the connection to the host to fetch files 
 async function init_http_proxy(channel) {
