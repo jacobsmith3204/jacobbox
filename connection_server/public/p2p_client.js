@@ -2,51 +2,45 @@ const peer_client_url = `${location.origin}/peer_client`;
 
 
 
-
-
 class Client {
-    static configuration = {
-        iceServers: [
-            {
-                urls: "stun:stun.relay.metered.ca:80",
-            },
-            {
-                urls: "turn:global.relay.metered.ca:80",
-                username: "cdae4cba9d10986d8368192c",
-                credential: "0E4wUEGm3H1XgUUG",
-            },
-            {
-                urls: "turn:global.relay.metered.ca:80?transport=tcp",
-                username: "cdae4cba9d10986d8368192c",
-                credential: "0E4wUEGm3H1XgUUG",
-            },
-            {
-                urls: "turn:global.relay.metered.ca:443",
-                username: "cdae4cba9d10986d8368192c",
-                credential: "0E4wUEGm3H1XgUUG",
-            },
-            {
-                urls: "turns:global.relay.metered.ca:443?transport=tcp",
-                username: "cdae4cba9d10986d8368192c",
-                credential: "0E4wUEGm3H1XgUUG",
-            },
-        ],
+    static configuration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
 
+    // overrideble game client stuff
+    OnClientConnection = () => {
+        console.log("client DataChannel open");
+    }
+    OnClientMessage = (event) => {
+        console.log("client Received:", event.data);
     }
 
-    async start(host) {
+    redirectToGamePage = async () => {
+        const htmlString = `<iframe id="p2pFrame" src="p2p/index.html" style="
+    width: 100%;
+    height: 100%;
+    display: inline-block;
+    border-width: 0;
+    position: fixed;
+    top: 0;
+    left: 0; 
+    "> </iframe>`;
+        // 1. Create a fragment and parse the HTML string
+        const fragment = document.createRange().createContextualFragment(htmlString);
+        // 2. Append it directly to your target element
+        document.body.appendChild(fragment);
+    }
+
+
+
+    // call after setting up gameclient function handlers, starts the connection handshake 
+    async start(gameId) {
         console.log("startClient");
 
-        host ??= location.hash.length == 5 ? location.hash.slice(1) : "1234";
-
-
         // request offer from server (GET) will pend until the offer is requested from the host and a valid/invalid response is returned.  
-        const message = await this.fetchConnectionOfferFromRoomHost(host);
+        const message = await this.fetchConnectionOfferFromRoomHost(gameId);
         console.log("finished waiting for offer");
         // early exit if it doesnt get back the expected offer
         if (!message.offer) {
-            console.error("no offer in response message", message);
-            return;
+            throw new Error(`no offer in response message ${message}`);
         }
 
 
@@ -54,51 +48,16 @@ class Client {
         const peerConnection = new RTCPeerConnection(Client.configuration);
 
         // assigns to the data channel 
+        const thisClient = this;
         peerConnection.ondatachannel = event => {
             const channel = event.channel;
             switch (channel.label) {
                 case "game_socket":
-
-                    channel.onopen = () => { window.game_socket = channel; OnClientConnection() };
-                    channel.onmessage = OnClientMessage;
+                    channel.onopen = () => { window.game_socket = channel; thisClient.OnClientConnection() };
+                    channel.onmessage = () => thisClient.OnClientMessage();
                     break;
-
                 case "http_proxy":
-                    channel.onopen = () => {
-                        console.log("channel http_proxy is open");
-                        window.http_proxy = channel;
-
-                        let str = location.pathname;
-                        let path = `${str.slice(0, str.lastIndexOf('/'))}/sw.js`;
-                        console.log("registering service worker", path);
-
-                        navigator.serviceWorker.register(path).then(() => {
-                            console.log("service worker registered")
-
-                            // Create a MessageChannel to bridge SW <-> DataChannel
-                            const msgChannel = new MessageChannel();
-
-                            // DataChannel → SW
-                            channel.onmessage = (ev) => msgChannel.port1.postMessage(ev.data);
-
-                            // SW → DataChannel
-                            msgChannel.port1.onmessage = (ev) => channel.send(ev.data);
-
-                            // Wait for SW to be active
-                            navigator.serviceWorker.ready.then(reg => {
-
-                                console.log("sending port to service worker");
-
-                                reg.active.postMessage(
-                                    {
-                                        type: "setPort",
-                                        port: msgChannel.port2
-                                    },
-                                    [msgChannel.port2]
-                                );
-                            });
-                        });
-                    };
+                    channel.onopen = () => init_http_proxy(channel).then(() => thisClient.redirectToGamePage());
                     break;
             }
         }
@@ -115,12 +74,11 @@ class Client {
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
 
-
         console.log("waiting for ice to gather");
         await this.IceGatheringCompleted(peerConnection);
 
         console.log("sending answer back to host");
-        this.sendAnswerToHost({ 'answer': peerConnection.localDescription, candidates, "id": message.id, "host": message.host });
+        this.postAnswerToHost({ 'answer': peerConnection.localDescription, candidates, "id": message.id, "host": message.host });
 
 
         // Listen for connectionstatechange on the local RTCPeerConnection
@@ -134,6 +92,7 @@ class Client {
         });
     }
 
+    // fetch requests a game 
     async fetchConnectionOfferFromRoomHost(host) {
         const req = await fetch(peer_client_url, {
             method: 'POST',
@@ -145,7 +104,8 @@ class Client {
         //  { id: [id for this client],  host: [host/game_code], offer: [rtcPeerConnection offer] } 
         return req.json();
     }
-    async sendAnswerToHost(message) {
+    // post to send the offer's answer 
+    async postAnswerToHost(message) {
         // send the response back to the server 
         return fetch(peer_client_url, {
             method: 'POST',
@@ -168,62 +128,49 @@ class Client {
 }
 
 
+// connects the service worker to allow fetch requests to */p2p/* to use the connection to the host to fetch files 
+async function init_http_proxy(channel) {
+    console.log("channel http_proxy is open");
+    window.http_proxy = channel;
 
-async function redirectToGamePage() {
+    let str = location.pathname;
+    let path = `${str.slice(0, str.lastIndexOf('/'))}/sw.js`;
+    console.log("registering service worker", path);
 
-    const htmlString = `<iframe id="p2pFrame" src="p2p/index.html" style="
-    width: 100%;
-  height: 100%;
-  display: inline-block;
-  border-width: 0;
-  position: fixed;
-  top: 0;
-  left: 0; 
-    "> </iframe>`;
-    // 1. Create a fragment and parse the HTML string
-    const fragment = document.createRange().createContextualFragment(htmlString);
-    // 2. Append it directly to your target element
-    document.body.appendChild(fragment);
-}
+    await navigator.serviceWorker.register(path);
+    console.log("service worker registered");
 
-function executeScripts(doc) {
-    const base = doc.querySelector("base")?.href || document.baseURI;
-    const scripts = doc.querySelectorAll("script");
+    await new Promise(resolve => {
+        // Create a MessageChannel to bridge SW <-> DataChannel
+        const msgChannel = new MessageChannel();
+        // DataChannel → SW
+        channel.onmessage = (ev) => msgChannel.port1.postMessage(ev.data);
+        // SW → DataChannel
+        msgChannel.port1.onmessage = (ev) => {
+            // Resolve promise on first message from the service worker when it initialises. 
+            resolve(ev.data);
 
-    scripts.forEach(oldScript => {
-        const newScript = document.createElement("script");
-
-        // Copy attributes except src
-        for (const attr of oldScript.attributes) {
-            if (attr.name !== "src") {
-                newScript.setAttribute(attr.name, attr.value);
-            }
-        }
-
-        // Resolve src manually
-        if (oldScript.src) {
-            const resolved = new URL(oldScript.getAttribute("src"), base).href;
-            newScript.src = resolved;
-        } else {
-            newScript.textContent = oldScript.textContent;
-        }
-
-        oldScript.replaceWith(newScript);
+            channel.send(ev.data); // sends data via the channel
+        };
+        // Wait for SW to be active, (then sends a message to connect the port?)
+        navigator.serviceWorker.ready.then(reg => {
+            reg.active.postMessage(
+                {
+                    type: "setPort",
+                    port: msgChannel.port2
+                },
+                [msgChannel.port2]
+            );
+        });
     });
+    console.log("sw connected to peer, redirecting to page");
 }
+
 
 
 // client for the game (browser)
-async function startClient(host) {
+async function startClient(gameId) {
     const client = window.client = new Client();
-    client.start();
+    return client.start(gameId);
 }
 
-
-
-function OnClientConnection() {
-    console.log("client DataChannel open");
-}
-function OnClientMessage(event) {
-    console.log("client Received:", event.data);
-}

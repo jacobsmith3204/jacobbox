@@ -3,8 +3,8 @@
 import fs from 'node:fs';
 import { url } from 'node:inspector';
 import path from 'node:path';
+import WebSocket from "ws";
 const { RTCPeerConnection, RTCSessionDescription, WebRtcHttpBridge } = require('@koush/wrtc');
-
 
 
 
@@ -22,19 +22,8 @@ const peerConfiguration = {
         'stun:stun1.l.google.com:3478',
         'stun:stun2.l.google.com:19302'
       ]
-    }
-  ]
-
-
-
-    
-} satisfies {iceServers: iceServers[]}
-
-
-/*
-
- 'iceServers': [
-    {
+    }, 
+     {
       urls: "stun:stun.relay.metered.ca:80",
     },
     {
@@ -57,8 +46,15 @@ const peerConfiguration = {
       username: "cdae4cba9d10986d8368192c",
       credential: "0E4wUEGm3H1XgUUG",
     },
-]
-*/
+  ]
+
+
+
+    
+} satisfies {iceServers: iceServers[]}
+
+
+
 
 
 
@@ -89,10 +85,13 @@ export class P2PHost {
 
         console.log("setting up host websocket", url);
         // opens the weboscket connection to the server
-        P2PHost.signalingChannel = new WebSocket(url);
+        P2PHost.signalingChannel = new WebSocket(url, {
+            /*!!!!! this is an insecure channel */
+            rejectUnauthorized: false
+        });
 
         // wait for messages to the websocket from the server to handle the incoming request for clients.  
-        P2PHost.signalingChannel.addEventListener('message', async (event) => {
+        P2PHost.signalingChannel.addEventListener('message', async (event: any) => {
             const message = JSON.parse(event.data);
             // message offer will have the name/id/hash of the client
             if (message.request)

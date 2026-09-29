@@ -9,6 +9,7 @@ self.addEventListener("message", (event) => {
     if (event.data.type === "setPort") {
         p2pPort = event.data.port;
 
+
         p2pPort.onmessage = (ev) => {
             const res = JSON.parse(ev.data);
 
@@ -20,15 +21,22 @@ self.addEventListener("message", (event) => {
                 console.warn("SW: no pending response for id", res.id);
             }
         };
+        
+        // sends a first init message back, so we know its working
+        p2pPort.postMessage(JSON.stringify({
+            id: "init",
+            ok: true,
+            message: "P2P port connected"
+        }));
     }
 });
 
 self.addEventListener("fetch", (event) => {
-    
+
 
     const url = new URL(event.request.url);
-    const index =  url.pathname.indexOf("/p2p/")
-    if (index == -1) 
+    const index = url.pathname.indexOf("/p2p/")
+    if (index == -1)
         return;
     const pathname = url.pathname.slice(index + 4);
     event.respondWith(handleP2P(pathname));

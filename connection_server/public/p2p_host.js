@@ -1,141 +1,164 @@
-// server url to use as peering service/ verify if host exists else use localhost
-const locationHost = typeof location !== 'undefined' ? location.host : "localhost:8000";
-const peer_host_wss_url = `wss://${locationHost}/peer_server`;
 // creates a configuration for the connection 
-
-
-
-
-const peerConfiguration = {
-    'iceServers': [
-    {
-      urls: "stun:stun.relay.metered.ca:80",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turns:global.relay.metered.ca:443?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    ]
-} 
-
 class Host {
-    
+    static configuration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
     static connected_clients = {};
     static signalingChannel; // websocket channel for setup/ comunication with the server
 
 
-    static dataChannels = {}; //["key", (channel_object)=> {}]
+    static dataChannels = {};  // { [key: string]: (socket: RTCDataChannel) => void }
 
     constructor() {
-        // ADD NEW DATA CHANNELS HERE LIKE THIS
-        const host = this;
-        Host.dataChannels["game_socket"] = (game_socket) => {
-            game_socket.onopen = host.OnHostConnection;
-            game_socket.onmessage = host.OnHostMessage;
+        // ADD NEW DATA CHANNELS LIKE THIS
+        P2PHost.dataChannels["game_socket"] = dc => {
+            dc.onopen = () => console.log("P2Phost game_socket open");;
+            dc.onmessage = (event) => console.log("P2PHost game_socket Received:", event.data);
         }
+        P2PHost.dataChannels["http_proxy"] = httpProxyDataChannel;
     }
 
     async start(url) {
         // if a current websocket is open and connected. skip this 
-        if (Host.signalingChannel && Host.signalingChannel.readyState == WebSocket.OPEN) {
+        if (P2PHost.signalingChannel && P2PHost.signalingChannel.readyState == WebSocket.OPEN) {
             console.warn("host websocket already setup and active");
             return;
         }
-        else console.log("setting up host websocket", url ?? peer_host_wss_url);
 
+        console.log("setting up host websocket", url);
         // opens the weboscket connection to the server
-
-        Host.signalingChannel = new WebSocket(url ?? peer_host_wss_url);
+        P2PHost.signalingChannel = new WebSocket(url);
 
         // wait for messages to the websocket from the server to handle the incoming request for clients.  
-        Host.signalingChannel.addEventListener('message', async event => {
+        P2PHost.signalingChannel.addEventListener('message', async (event) => {
             const message = JSON.parse(event.data);
             // message offer will have the name/id/hash of the client
             if (message.request)
-                Host.returnOfferToClient(message);
+                returnOfferToClient(message);
             else if (message.answer)
-                Host.finaliseClientConnection(message);
+                finaliseClientConnection(message);
+            else
+                console.warn(event.data);
         });
-    }
-
-
-    static async returnOfferToClient(message) {
-        console.log("sending offer to new client", message.id);
-        // creates a new connection to the client
-        const peerConnection = new RTCPeerConnection(peerConfiguration);
-        // adds the new connection to the list. 
-        Host.connected_clients[message.id] = peerConnection;
-
-        // adds the peer to peer websocket data stream channel to the connection
-        Object.entries(Host.dataChannels).forEach(([key, handler]) => { handler(peerConnection.createDataChannel(key)); });
-
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-
-        //then send the offer to the main server
-        Host.signalingChannel.send(JSON.stringify({ 'offer': offer, "host": message.host, "id": message.id }));
-    }
-
-
-    static async finaliseClientConnection(message) {
-        console.log("finalising client", message.id);
-        // assume we get the id/hash from the server. 
-        const peerConnection = Host.connected_clients[message.id];
-        // if valid connection then it will pass these
-        const remoteDesc = new RTCSessionDescription(message.answer);
-        await peerConnection.setRemoteDescription(remoteDesc);
-
-        // add the candidates
-        for (const c of message.candidates) {
-            if (!c.candidate)
-                continue;
-            const ice = {
-                candidate: c.candidate,
-                sdpMid: c.sdpMid ?? null,
-                sdpMLineIndex: c.sdpMLineIndex ?? 0
-            };
-            //console.log("Adding ICE:", ice);
-            peerConnection.addIceCandidate(ice);
-        }
-
-        // Listen for connectionstatechange on the local RTCPeerConnection
-        // when its connected, create a websocket datachannel to send events over. 
-        peerConnection.addEventListener('connectionstatechange', event => {
-            switch (peerConnection.connectionState) {
-                case 'connected':
-                    console.log("connected to peer from host");
-                    break;
-            }
+        // Handle connection open
+        P2PHost.signalingChannel.addEventListener('open', () => {
+            console.log('p2p host websocket open and active');
         });
-    }
-
-    OnHostConnection() {
-        console.log("host DataChannel open");
-    }
-    OnHostMessage(event) {
-        console.log("host Received:", event.data);
+        // Handle connection closure
+        P2PHost.signalingChannel.addEventListener('close', () => {
+            console.log('p2p host websocket disconnected, app is closing');
+            // exits the program since we are no longer connected to the main server
+            process.exit(0);
+        });
+        // Handle errors
+        P2PHost.signalingChannel.addEventListener('error', (error) => {
+            console.error('p2p host websocket error:', error);
+        });
     }
 }
 
 
 
+async function returnOfferToClient(message) {
+    console.log("sending offer to new client", message.id);
+    // creates a new connection to the client
 
+    const peerConnection = new RTCPeerConnection(P2PHost.configuration);
+
+    // adds the new connection to the list. 
+    P2PHost.connected_clients[message.id] = peerConnection;
+
+    // adds the peer to peer data channel streams to the connection
+    Object.entries(P2PHost.dataChannels).forEach(([key, handler]) => { handler(peerConnection.createDataChannel(key)); });
+
+    // creates an offer with the data given
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    //then send the offer to the main server
+    P2PHost.signalingChannel.send(JSON.stringify({ 'offer': offer, "host": message.host, "id": message.id }));
+}
+
+async function finaliseClientConnection(message) {
+    console.log("finalising client", message.id);
+    // assume we get the id/hash from the server. 
+    const peerConnection = P2PHost.connected_clients[message.id];
+    // if valid connection then it will pass these
+    const remoteDesc = new RTCSessionDescription(message.answer);
+    await peerConnection.setRemoteDescription(remoteDesc);
+
+    // add the ice candidates
+    for (const c of message.candidates) {
+        if (!c.candidate)
+            continue;
+        // makes sure its formatted correctly
+        const ice = {
+            candidate: c.candidate,
+            sdpMid: c.sdpMid ?? null,
+            sdpMLineIndex: c.sdpMLineIndex ?? 0
+        };
+        //console.log("Adding ICE:", ice);
+        peerConnection.addIceCandidate(ice);
+    }
+}
+
+
+// data channel to handle the sw's forward http requests. 
+const httpProxyDataChannel = (dc) => {
+
+    if (typeof location !== 'undefined') {
+        // dont add this if on the web to avoid errors with node:fs and node:path
+        return;
+    }
+
+    dc.onopen = () => { console.log("http_proxy open") };
+    dc.onmessage = async (msg) => {
+
+        if (!msg.data) {
+            console.assert("http-proxy no data sent");
+            return;
+        } else {
+            console.log("http-proxy handling message");
+        }
+        // assumes data is in json format
+        const req = JSON.parse(msg.data);
+        console.log(req);
+        const filePath = path.join(__dirname, "public", req.path ?? "NO_PATH_PROVIDED");
+
+        try {
+            // fetchs the file and returns it
+            const data = await fs.promises.readFile(filePath);
+            dc.send(JSON.stringify({
+                ok: true,
+                id: req.id,
+                mime: getMime(filePath),
+                body: data.toString("base64")
+            }));
+            console.log("sent file to client", filePath);
+        } catch (e) {
+            // if it cant find the file or throws an error sends the appropriate response
+            dc.send(JSON.stringify({ ok: false, id: req.id, error: "Not found" }));
+            console.log("failed to send to client", filePath);
+            console.log("had an error", req.id);
+        }
+    };
+};
+
+// makes sure the file types are interpreted correctly 
+function getMime(file) {
+    if (file.endsWith(".html")) return "text/html";
+    if (file.endsWith(".js")) return "application/javascript";
+    if (file.endsWith(".css")) return "text/css";
+    if (file.endsWith(".png")) return "image/png";
+    if (file.endsWith(".svg")) return "image/svg+xml";
+    return "application/octet-stream";
+}
+
+
+
+// connects to localhost or if hosting from the web uses the urls host name and port
+const locationHost = typeof location !== 'undefined' ? location.host : "localhost:8000";
+const peer_host_wss_url = `wss://${locationHost}/peer_server`;
 function startHost() {
     const host = new Host().start(peer_host_wss_url);
 }
+
+
