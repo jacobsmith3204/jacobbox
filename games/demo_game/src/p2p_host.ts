@@ -96,11 +96,22 @@ export class P2PHost {
 
 
 
+
 async function returnOfferToClient(message: any) {
     console.log("sending offer to new client", message.id);
     // creates a new connection to the client
 
     const peerConnection = new RTCPeerConnection(peerConfiguration);
+
+    peerConnection.addEventListener("icecandidate", (event: any) => {
+        if (event.candidate) {
+            console.log(
+                "HOST ICE candidate:",
+                event.candidate.candidate
+            );
+        }
+    });
+
 
     // adds the new connection to the list. 
     P2PHost.connected_clients[message.id] = peerConnection;
@@ -112,6 +123,8 @@ async function returnOfferToClient(message: any) {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
+
+    console.log(    "HOST OFFER:",  peerConnection.localDescription?.sdp);
     //then send the offer to the main server
     P2PHost.signalingChannel.send(JSON.stringify({ 'offer': offer, "host": message.host, "id": message.id }));
 }
@@ -120,6 +133,7 @@ async function finaliseClientConnection(message: any) {
     console.log("finalising client", message.id);
     // assume we get the id/hash from the server. 
     const peerConnection = P2PHost.connected_clients[message.id];
+
     // if valid connection then it will pass these
     const remoteDesc = new RTCSessionDescription(message.answer);
     await peerConnection.setRemoteDescription(remoteDesc);

@@ -3,7 +3,16 @@ const peer_client_url = `${location.origin}/peer_client`;
 //const peerConfiguration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
 
 const peerConfiguration = {
-    'iceServers': [
+    iceServers: [
+        { urls: "stun:stun.l.google.com:19302" }
+
+    ]
+};
+
+
+
+/*
+     'iceServers': [
         {
             urls: "stun:stun.relay.metered.ca:80",
         },
@@ -28,7 +37,9 @@ const peerConfiguration = {
             credential: "0E4wUEGm3H1XgUUG",
         },
     ]
-};
+
+
+*/
 // turn:oceania.relay.metered.ca:80
 
 
@@ -134,7 +145,7 @@ class Client {
             }
         });
 
-        await waitForIceConnection(peerConnection); 
+        await waitForIceConnection(peerConnection);
     }
 
     // fetch requests a game 
@@ -210,7 +221,7 @@ function waitForIceConnection(peerConnection) {
 
         peerConnection.addEventListener(
             "iceconnectionstatechange",
-            onStateChange );
+            onStateChange);
 
         // Handle the possibility that it is already in a useful state.
         onStateChange();
