@@ -92,7 +92,11 @@ export class P2PHost {
                 console.log("websocket failed to connect and is closing/closed");
         });
     }
+
+    
+   
 }
+
 
 
 
@@ -122,12 +126,23 @@ async function returnOfferToClient(message: any) {
     // creates an offer with the data given
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
+    await IceGatheringCompleted(peerConnection);
 
 
     console.log(    "HOST OFFER:",  peerConnection.localDescription?.sdp);
     //then send the offer to the main server
     P2PHost.signalingChannel.send(JSON.stringify({ 'offer': offer, "host": message.host, "id": message.id }));
 }
+
+ async function IceGatheringCompleted(peerConnection: RTCPeerConnection) {
+        // makes sure we have completed the ice gathering stage. 
+        return new Promise<void>(resolve => {
+            if (peerConnection.iceGatheringState === "complete")
+                resolve();
+            else
+                peerConnection.addEventListener("icegatheringstatechange", () => (peerConnection.iceGatheringState === "complete") ? resolve() : null);
+        });
+    }
 
 async function finaliseClientConnection(message: any) {
     console.log("finalising client", message.id);
