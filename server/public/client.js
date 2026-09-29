@@ -2,8 +2,37 @@ const peer_client_url = `${location.origin}/peer_client`;
 
 
 
+
+
 class Client {
-    static configuration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
+    static configuration = {
+        iceServers: [
+            {
+                urls: "stun:stun.relay.metered.ca:80",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:80",
+                username: "cdae4cba9d10986d8368192c",
+                credential: "0E4wUEGm3H1XgUUG",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:80?transport=tcp",
+                username: "cdae4cba9d10986d8368192c",
+                credential: "0E4wUEGm3H1XgUUG",
+            },
+            {
+                urls: "turn:global.relay.metered.ca:443",
+                username: "cdae4cba9d10986d8368192c",
+                credential: "0E4wUEGm3H1XgUUG",
+            },
+            {
+                urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                username: "cdae4cba9d10986d8368192c",
+                credential: "0E4wUEGm3H1XgUUG",
+            },
+        ],
+
+    }
 
     async start(host) {
         console.log("startClient");
