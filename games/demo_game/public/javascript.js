@@ -70,4 +70,3 @@ game.ConnectToServer();
 
 */
 
-alert("loaded js");

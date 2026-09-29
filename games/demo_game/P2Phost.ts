@@ -14,7 +14,7 @@ export class P2PHost {
     static signalingChannel: WebSocket; // websocket channel for setup/ comunication with the server
 
 
-    static dataChannels: { [key: string]: (socket: RTCDataChannel) => void } = {}; //["key", (channel_object)=> {}]
+    static dataChannels: { [key: string]: (socket: RTCDataChannel) => void } = {}; 
 
     constructor() {
         // ADD NEW DATA CHANNELS LIKE THIS
@@ -44,6 +44,8 @@ export class P2PHost {
                 returnOfferToClient(message);
             else if (message.answer)
                 finaliseClientConnection(message);
+            else 
+                console.warn(event.data);
         });
         // Handle connection open
         P2PHost.signalingChannel.addEventListener('open', () => {
@@ -110,11 +112,16 @@ async function finaliseClientConnection(message: any) {
 
 // data channel to handle the sw's forward http requests. 
 const httpProxyDataChannel = (dc: RTCDataChannel) => {
+     if (typeof location !== 'undefined') {
+        // dont add this if on the web to avoid errors with node:fs and node:path
+        return;
+    }
+
     dc.onopen = () => { console.log("http_proxy open") };
     dc.onmessage = async (msg) => {
 
         if (!msg.data) {
-            console.log("http-proxy no data sent");
+            console.assert("http-proxy no data sent");
             return;
         } else {
             console.log("http-proxy handling message");
@@ -122,11 +129,10 @@ const httpProxyDataChannel = (dc: RTCDataChannel) => {
         // assumes data is in json format
         const req = JSON.parse(msg.data);
         console.log(req);
+        const filePath = path.join(__dirname, "public", req.path ?? "NO_PATH_PROVIDED");
 
         try {
             // fetchs the file and returns it
-            const filePath = path.join(__dirname, "public", req.path);
-            console.log("searching for file at ", filePath);
             const data = await fs.promises.readFile(filePath);
             dc.send(JSON.stringify({
                 ok: true,
@@ -134,10 +140,11 @@ const httpProxyDataChannel = (dc: RTCDataChannel) => {
                 mime: getMime(filePath),
                 body: data.toString("base64")
             }));
-            console.log("sent file to ", req.id);
+            console.log("sent file to client", filePath );
         } catch (e) {
             // if it cant find the file or throws an error sends the appropriate response
             dc.send(JSON.stringify({ ok: false, id: req.id, error: "Not found" }));
+            console.log("failed to send to client", filePath);
             console.log("had an error", req.id);
         }
     };

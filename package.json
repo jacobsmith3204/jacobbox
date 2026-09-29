@@ -15,8 +15,9 @@
   "type": "nodenext",
   "main": "server.ts",
   "scripts": {
-    "start": "npx vite-node server.ts",
-    "host:demo": "npx vite-node games/demo_game/demo_game_server.ts https://jacobsmith3204.ngrok.io/peer_server"
+    "start": "npx vite-node server/server.ts",
+    "host:demo_remote": "npx vite-node games/demo_game/demo_game_server.ts https://jacobsmith3204.ngrok.io/peer_server", 
+    "host:demo_local": "npx vite-node games/demo_game/demo_game_server.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.3"
