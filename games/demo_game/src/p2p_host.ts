@@ -6,17 +6,34 @@ import path from 'node:path';
 const { RTCPeerConnection, RTCSessionDescription, WebRtcHttpBridge } = require('@koush/wrtc');
 
 
-// loads env file credentials
-/*
-const filePath = path.join(__dirname, '..', );
-const file = fs.readFileSync(filePath); 
-*/
 
 
-type iceServers =  {urls: string , username?:string, credential?:string }
+type iceServers =  {urls: string | string[], username?:string, credential?:string }
 
 const peerConfiguration = {
-    'iceServers': [
+ iceServers: [
+    {
+      // Primary standard Google STUN server
+      urls: 'stun:stun.l.google.com:19302' 
+    },
+    {
+      // Alternative fallback Google STUN configurations
+      urls: [
+        'stun:stun1.l.google.com:3478',
+        'stun:stun2.l.google.com:19302'
+      ]
+    }
+  ]
+
+
+
+    
+} satisfies {iceServers: iceServers[]}
+
+
+/*
+
+ 'iceServers': [
     {
       urls: "stun:stun.relay.metered.ca:80",
     },
@@ -40,8 +57,8 @@ const peerConfiguration = {
       username: "cdae4cba9d10986d8368192c",
       credential: "0E4wUEGm3H1XgUUG",
     },
-    ]
-} satisfies {iceServers: iceServers[]}
+]
+*/
 
 
 
@@ -98,6 +115,9 @@ export class P2PHost {
         // Handle errors
         P2PHost.signalingChannel.addEventListener('error', (error: any) => {
             console.error('p2p host websocket error:', error);
+
+            if (P2PHost.signalingChannel.readyState > 1)
+                console.log("websocket failed to connect and is closing/closed");
         });
     }
 }

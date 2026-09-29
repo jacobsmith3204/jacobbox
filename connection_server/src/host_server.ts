@@ -6,8 +6,6 @@ import { IncomingMessage, ServerResponse } from "http";
 import path from "path";
 import { lookup as lookupMimeType } from "mime-types";
 
-import { fileURLToPath } from "url";
-
 
 const PUBLIC_DIR = path.resolve(
     __dirname,
@@ -694,8 +692,20 @@ const httpsServer =
             res.end("Not found");
         }
     );
+    
+httpsServer.on("secureConnection", (tlsSocket) => {
+    console.log(
+        "TLS connection established:",
+        tlsSocket.remoteAddress
+    );
+});
 
-
+httpsServer.on("tlsClientError", (error) => {
+    console.error(
+        "TLS client error:",
+        error
+    );
+});
 
 
 
@@ -721,12 +731,17 @@ const wss =
 httpsServer.on(
     "upgrade",
     (req, socket, head) => {
-        //
-        // Only /peer_server is allowed to upgrade.
-        //
-        if (
-            req.url !== "/peer_server"
-        ) {
+        console.log(
+            "WebSocket upgrade received:",
+            req.url
+        );
+
+        if (req.url !== "/peer_server") {
+            console.log(
+                "Rejecting:",
+                req.url
+            );
+
             socket.destroy();
             return;
         }
@@ -735,7 +750,11 @@ httpsServer.on(
             req,
             socket,
             head,
-            (ws: WebSocket) => {
+            (ws) => {
+                console.log(
+                    "WebSocket upgrade successful"
+                );
+
                 wss.emit(
                     "connection",
                     ws,
