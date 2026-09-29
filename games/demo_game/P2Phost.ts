@@ -7,26 +7,46 @@ const { RTCPeerConnection, RTCSessionDescription, WebRtcHttpBridge } = require('
 
 
 // loads env file credentials
+/*
 const filePath = path.join(__dirname, '..', );
 const file = fs.readFileSync(filePath); 
+*/
 
 
-
-type iceServers =  {urls: string }
+type iceServers =  {urls: string , username?:string, credential?:string }
 
 const peerConfiguration = {
     'iceServers': [
         { urls: "stun:stun.l.google.com:19302"}, 
        
+    {
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+
     ]
 } satisfies {iceServers: iceServers[]}
 
 
-(async () => {
-  const response = await fetch("https://=jacobbox.metered.live/api/v1/turn/credentials?apiKey=pk_live_8a3225892c191c356b6ecb9da8f2fdc80c9b4fe8");
-  const iceServers = await response.json();
-  peerConfiguration.iceServers.push(...iceServers);
-})();
 
 // creates a configuration for the connection 
 export class P2PHost {
