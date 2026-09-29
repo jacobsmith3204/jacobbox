@@ -132,6 +132,7 @@ async function returnOfferToClient(message: any) {
     console.log(    "HOST OFFER:",  peerConnection.localDescription?.sdp);
     //then send the offer to the main server
     P2PHost.signalingChannel.send(JSON.stringify({ 'offer': peerConnection.localDescription, "host": message.host, "id": message.id }));
+    console.log("SENT OFFER TO CLIENT");
 }
 
  async function IceGatheringCompleted(peerConnection: RTCPeerConnection) {
