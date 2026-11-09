@@ -1,72 +1,76 @@
-/*
-const form = document.getElementById("gameForm");
-const message = document.getElementById("message");
-
-form.addEventListener("submit", function (e) {
-    e.preventDefault();
+console.log(`%c STARTING IFRAME INITIALISATION`, "color: lightgreen; font-weight: bold");
 
 
-    const roomCode = location.hash;
-    const playerName = document.getElementById("playerName").value.trim();
 
-    if (playerName.length === 0) {
-        message.textContent = "Please enter your name.";
-        message.style.color = "red";
-        return;
-    }
+// Inside the Cross-Domain Iframe
+let messageId = 0;
+const pendingRequests = new Map();
 
-    // Fake join action
-    message.textContent = `🎉 Welcome, ${playerName}! Joining room ${roomCode}...`;
-    message.style.color = "green";
+var user = {};
 
-    // TODO: Send data to server here
+// Listen for the parent's response
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (data && pendingRequests.has(data.id)) handleParentFunctionCallback(data);
+  else handleMessageFromHost(data);
+
 });
 
+function handleParentFunctionCallback(data) {
+  const { resolve, reject } = pendingRequests.get(data.id);
+  pendingRequests.delete(data.id);
 
+  if (data.status === "SUCCESS") resolve(data.result);
+  else reject(new Error(data.error));
+}
 
-var messageTypes = {
-    yourGuessCorrect: yourGuessCorrect,
-    yourGuessIncorrect: yourGuessIncorrect,
-    correctGuess: correctGuess,
-    incorrectGuess: incorrectGuess,
-    notYourTurn: notYourTurn,
-    message: message
+function handleMessageFromHost(message) {
+  console.log(message);
+}
+
+// Helper function to call the parent
+function callParent(method, ...args) {
+  return new Promise((resolve, reject) => {
+    const id = ++messageId;
+    pendingRequests.set(id, { resolve, reject });
+
+    // Send to window.parent
+    // Replace '*' with your exact parent domain for security
+    window.parent.postMessage(
+      {
+        id,
+        type: "PARENT_CALL",
+        method,
+        args,
+      },
+      "*",
+    );
+  });
 }
 
 
-class Game extends BaseClient {
+// button to ping server
+function TalkToServer() {
+  callParent("sendMessageToHost", "game_socket", "Hello from the iframe!");
+}
 
 
-    OnMessage(event) {
-
-        console.log(event.data);
-        if (typeof (event.data) == typeof (String))
-            return;
-
-        var data = JSON.parse(event.data);
-        messageTypes[data["type"]](data);
-    }
+// button to send join request to server
+async function JoinServer() {
+  const { id, username } = await callParent("getUserDetails");
+  user.id = id;
+  user.username = username;
+  callParent("sendMessageToHost", "game_socket", { type: "join", message: { id, username } });
+}
+async function DoMove() {
+  const guess = 1;
+  const username = user.username;
+  const id = user.id;
+  callParent("sendMessageToHost", "game_socket", { type: "guess", message: { id, username, guess } });
 }
 
 
 
-function yourGuessCorrect(data) {}
+JoinServer().then(DoMove);
 
-function yourGuessIncorrect(data) {}
-function correctGuess(data){}
-
-function incorrectGuess(data){}
-
-function notYourTurn(data){}
-function message(data){
-    console.log(data["message"]);
-}
-
-
-const game = new Game();
-game.ConnectToServer();
-
-
-
-*/
 

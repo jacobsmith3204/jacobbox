@@ -1,1230 +1,488 @@
+
 import https from "https";
 import fs from "fs";
 import crypto from "crypto";
-import { WebSocketServer, WebSocket } from "ws";
-import { IncomingMessage, ServerResponse } from "http";
 import path from "path";
+import {
+  WebSocketServer,
+  WebSocket,
+  RawData,
+} from "ws";
+import { IncomingMessage, ServerResponse } from "http";
 import { lookup as lookupMimeType } from "mime-types";
 
 const PUBLIC_DIR = path.resolve(__dirname, "..", "public");
-
 const PORT = 8000;
-
-// Maximum size of a /peer_client JSON request body.
-const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
-
-// How long a client is allowed to wait for the host
-// to respond with an offer.
-const CLIENT_REQUEST_TIMEOUT = 30_000; // 30 seconds
+const MAX_MESSAGE_SIZE = 1024 * 1024;
 
 interface PeerMessage {
-    request?: string;
-    answer?: unknown;
-    offer?: unknown;
-    host?: string;
-    id?: number;
-    [key: string]: unknown;
+  request?: string;
+  answer?: unknown;
+  offer?: unknown;
+  candidate?: unknown;
+  ice?: unknown;
+  complete?: unknown;
+  host?: string;
+  id?: number;
+  [key: string]: unknown;
 }
 
-interface QueuedClient {
-    id: number;
-    response: ServerResponse;
-    timeout: NodeJS.Timeout;
+function parseMessage(data: RawData): PeerMessage {
+  const parsed: unknown = JSON.parse(data.toString());
+
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed)
+  ) {
+    throw new Error("Message must be a JSON object");
+  }
+
+  return parsed as PeerMessage;
 }
 
-/**
- * Stores a host WebSocket and all clients currently waiting
- * for that host to respond with an offer.
- */
+function sendJson(client: WebSocket, message: unknown): void {
+  if (client.readyState === WebSocket.OPEN) {
+    client.send(JSON.stringify(message));
+  }
+}
+
+function sendError(client: WebSocket, error: string): void {
+  sendJson(client, { error });
+}
+
+function generateClientId(): number {
+  return crypto.randomInt(1, 2 ** 31 - 1);
+}
+
 class GameRoom {
-    static readonly ROOMS = new Map<string, GameRoom>();
+  static readonly ROOMS = new Map<string, GameRoom>();
 
-    readonly hostId: string;
-    readonly client: WebSocket;
+  readonly hostId: string;
+  readonly client: WebSocket;
 
-    private readonly queueingClients =
-        new Map<number, QueuedClient>();
+  readonly queueingClients = new Map<number, ActiveConnectionRequest>();
 
-    constructor(client: WebSocket) {
-        this.client = client;
-        this.hostId = GameRoom.generateHostId();
+  private destroyed = false;
 
-        GameRoom.ROOMS.set(this.hostId, this);
+  private constructor(client: WebSocket, hostId: string) {
+    this.client = client;
+    this.hostId = hostId;
 
-        console.log(
-            "created room with id",
-            this.hostId
-        );
+    GameRoom.ROOMS.set(hostId, this);
 
-        //
-        // Host WebSocket messages
-        //
-        this.client.on("message", (data) => {
-            try {
-                this.onMessage(data.toString());
-            } catch (error) {
-                console.error(
-                    "Error handling host message:",
-                    error
-                );
-            }
-        });
+    console.log("Created host room:", hostId);
 
-        //
-        // Host disconnected
-        //
-        this.client.on("close", () => {
-            this.destroy();
-        });
+    client.on("message", (data) => {
+      try {
+        this.onMessage(data);
+      } catch (error) {
+        console.error("Host message error:", error);
+      }
+    });
 
-        this.client.on("error", (error) => {
-            console.error(
-                "Host websocket error:",
-                error
-            );
+    client.on("close", () => this.destroy());
 
-            this.destroy();
-        });
+    client.on("error", (error) => {
+      console.error("Host WebSocket error:", error);
+      this.destroy();
+    });
 
-        //
-        // Tell host the game has started.
-        //
-        this.send({
-            response: "started game",
-            host: this.hostId,
-        });
-    }
+    sendJson(client, {
+      response: "started game",
+      host: hostId,
+    });
+  }
 
-
-
-    /**
-     * Check whether a client ID is currently queued.
-     *
-     * This is attached to GameRoom through a prototype method
-     * so the core room structure remains simple.
-     */
-    hasClient(
-        this: GameRoom,
-        clientId: number
-    ): boolean {
-        return (
-            (
-                this as unknown as {
-                    queueingClients: Map<
-                        number,
-                        QueuedClient
-                    >;
-                }
-            ).queueingClients.has(
-                clientId
-            )
-        );
-    };
-
-    /**
-     * Generate a 4-character host code.
-     *
-     * Equivalent to:
-     *
-     * Utilities.GenerateRandomString(4).toUpperCase()
-     */
-    private static generateHostId(): string {
-        const chars =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-        let result = "";
-
-        for (let i = 0; i < 4; i++) {
-            result += chars[
-                crypto.randomInt(0, chars.length)
-            ];
-        }
-
-        //
-        // Avoid accidentally creating an ID that already exists.
-        //
-        if (GameRoom.ROOMS.has(result)) {
-            return GameRoom.generateHostId();
-        }
-
-        return result;
-    }
-
-    /**
-     * Send JSON to the host.
-     */
-    private send(message: unknown): void {
-        if (
-            this.client.readyState !==
-            WebSocket.OPEN
-        ) {
-            return;
-        }
-
-        this.client.send(
-            JSON.stringify(message)
-        );
-    }
-
-    /**
-     * Handle messages received from the host.
-     *
-     * This corresponds to GameRoom.OnMessage() in Java.
-     */
-    private onMessage(message: string): void {
-        console.log(
-            "got message",
-            message
-        );
-
-        let request: PeerMessage;
-
-        try {
-            const parsed: unknown =
-                JSON.parse(message);
-
-            if (
-                typeof parsed !== "object" ||
-                parsed === null ||
-                Array.isArray(parsed)
-            ) {
-                console.error(
-                    "Host message must be a JSON object"
-                );
-
-                return;
-            }
-
-            request = parsed as PeerMessage;
-        } catch {
-            console.error(
-                "Invalid JSON received from host"
-            );
-
-            return;
-        }
-
-        //
-        // Host sent an offer to a client.
-        //
-        if (request.offer !== undefined) {
-            if (
-                !request.host ||
-                request.id === undefined
-            ) {
-                console.error(
-                    "Offer is missing host or id"
-                );
-
-                return;
-            }
-
-            //
-            // The message came from this room's host,
-            // so make sure it claims to belong to this room.
-            //
-            if (
-                request.host !==
-                this.hostId
-            ) {
-                console.error(
-                    "Host ID mismatch:",
-                    request.host,
-                    this.hostId
-                );
-
-                return;
-            }
-
-            //
-            // Find the HTTP client waiting for this offer.
-            //
-            const queuedClient =
-                this.queueingClients.get(
-                    request.id
-                );
-
-            if (!queuedClient) {
-                console.error(
-                    "Client does not exist:",
-                    request.id
-                );
-
-                return;
-            }
-
-            //
-            // Cancel the timeout.
-            //
-            clearTimeout(
-                queuedClient.timeout
-            );
-
-            //
-            // Send the host's offer back through
-            // the original /peer_client HTTP request.
-            //
-            if (
-                !queuedClient.response
-                    .writableEnded
-            ) {
-                sendJson(
-                    queuedClient.response,
-                    request
-                );
-            }
-
-            //
-            // Remove it from the queue.
-            //
-            this.queueingClients.delete(
-                request.id
-            );
-
-            console.log(
-                this.hostId,
-                "completed offer to",
-                request.id
-            );
-        }
-    }
-
-    /**
-     * Add an HTTP client to the waiting queue.
-     */
-    addClient(
-        clientId: number,
-        response: ServerResponse
-    ): void {
-        //
-        // Prevent a request from hanging forever if
-        // the host never responds.
-        //
-        const timeout =
-            setTimeout(() => {
-                const queued =
-                    this.queueingClients.get(
-                        clientId
-                    );
-
-                //
-                // Make sure this is still the same
-                // queued HTTP response.
-                //
-                if (
-                    queued?.response !==
-                    response
-                ) {
-                    return;
-                }
-
-                this.queueingClients.delete(
-                    clientId
-                );
-
-                if (
-                    !response.writableEnded
-                ) {
-                    sendJson(
-                        response,
-                        {
-                            error:
-                                "host did not respond in time",
-                        }
-                    );
-                }
-
-                console.log(
-                    this.hostId,
-                    "timed out client",
-                    clientId
-                );
-            }, CLIENT_REQUEST_TIMEOUT);
-
-        this.queueingClients.set(
-            clientId,
-            {
-                id: clientId,
-                response,
-                timeout,
-            }
-        );
-
-        //
-        // If the client disconnects before the host
-        // responds, remove it from the queue.
-        //
-        response.on("close", () => {
-            const queued =
-                this.queueingClients.get(
-                    clientId
-                );
-
-            //
-            // Only remove the entry if this is
-            // still the same HTTP response.
-            //
-            if (
-                queued?.response ===
-                response
-            ) {
-                clearTimeout(
-                    queued.timeout
-                );
-
-                this.queueingClients.delete(
-                    clientId
-                );
-            }
-        });
-    }
-
-    /**
-     * Forward a message to the host.
-     */
-    sendToHost(message: unknown): void {
-        this.send(message);
-    }
-
-    /**
-     * Remove the room.
-     */
-    destroy(): void {
-        //
-        // Don't destroy twice.
-        //
-        if (
-            !GameRoom.ROOMS.has(
-                this.hostId
-            )
-        ) {
-            return;
-        }
-
-        GameRoom.ROOMS.delete(
-            this.hostId
-        );
-
-        //
-        // Notify clients waiting for an offer.
-        //
-        for (
-            const client
-            of this.queueingClients.values()
-        ) {
-            clearTimeout(
-                client.timeout
-            );
-
-            if (
-                !client.response
-                    .writableEnded
-            ) {
-                sendJson(
-                    client.response,
-                    {
-                        error:
-                            "host disconnected",
-                    }
-                );
-            }
-        }
-
-        this.queueingClients.clear();
-
-        console.log(
-            "removing room",
-            this.hostId
-        );
-    }
-
-    /**
-     * Find an existing room.
-     */
-    static get(
-        hostId: string
-    ): GameRoom | undefined {
-        return GameRoom.ROOMS.get(
-            hostId
-        );
-    }
-}
-
-/**
- * Handle POST /peer_client
- */
-async function handleClient(
-    req: IncomingMessage,
-    res: ServerResponse
-): Promise<void> {
-    try {
-        const body =
-            await readJsonBody(req);
-
-        //
-        // Client wants to find a game.
-        //
-        if (
-            body.request !== undefined
-        ) {
-            console.log(
-                "handling request for offer",
-                body
-            );
-
-            handleRequest(
-                res,
-                body
-            );
-
-            return;
-        }
-
-        //
-        // Client has received an offer and is
-        // returning an answer.
-        //
-        if (
-            body.answer !== undefined
-        ) {
-            console.log(
-                "handling answer from offer",
-                body
-            );
-
-            handleAnswer(
-                res,
-                body
-            );
-
-            return;
-        }
-
-        sendJson(
-            res,
-            {
-                error:
-                    "needs a request or answer field in the request body",
-            }
-        );
-    } catch (error) {
-        console.error(
-            "Error handling client request:",
-            error
-        );
-
-        if (!res.writableEnded) {
-            sendJson(
-                res,
-                {
-                    error:
-                        "not a valid request",
-                }
-            );
-        }
-    }
-}
-
-/**
- * Equivalent to ClientHandler.handleRequest()
- *
- * Client asks the host to find/create a peer connection.
- */
-function handleRequest(
-    res: ServerResponse,
-    body: PeerMessage
-): void {
-    //
-    // Match the Java server's missing-host behavior.
-    //
-    if (!body.host) {
-        sendJson(
-            res,
-            {
-                error:
-                    "no host code provided",
-            }
-        );
-
-        return;
-    }
-
-    const room =
-        getValidRoom(body);
-
-    if (!room) {
-        sendJson(
-            res,
-            {
-                error:
-                    `room does not exist ${body.host}`,
-            }
-        );
-
-        return;
-    }
-
-    //
-    // Generate an ID for this client request.
-    //
-    let clientId: number;
+  static createNew(client: WebSocket): GameRoom {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let hostId: string;
 
     do {
-        clientId =
-            crypto.randomInt(
-                1,
-                2 ** 31 - 1
-            );
-    } while (
-        room.hasClient(clientId)
-    );
+      hostId = "";
 
-    //
-    // Keep the HTTP response open until the host
-    // sends us an offer.
-    //
-    room.addClient(
-        clientId,
-        res
-    );
+      for (let i = 0; i < 4; i++) {
+        hostId += chars[crypto.randomInt(0, chars.length)];
+      }
+    } while (this.ROOMS.has(hostId));
 
-    //
-    // Add the client ID and host ID to the
-    // message sent to the host.
-    //
-    body.id = clientId;
-    body.host = room.hostId;
+    return new GameRoom(client, hostId);
+  }
 
-    //
-    // Send request to host WebSocket.
-    //
-    room.sendToHost(body);
+  static get(hostId: string): GameRoom | undefined {
+    return this.ROOMS.get(hostId);
+  }
 
-    console.log(
-        "sent request to host, expecting offer via websocket"
-    );
-}
+  hasClient(clientId: number): boolean {
+    return this.queueingClients.has(clientId);
+  }
 
-/**
- * Equivalent to ClientHandler.handleAnswer()
- *
- * Client sends its answer back to the host.
- */
-function handleAnswer(
-    res: ServerResponse,
-    body: PeerMessage
-): void {
-    //
-    // Match the Java server's missing-host behavior.
-    //
-    if (!body.host) {
-        sendJson(
-            res,
-            {
-                error:
-                    "no host code provided",
-            }
-        );
+  private onMessage(data: RawData): void {
+    const request = parseMessage(data);
 
-        return;
+    console.log("Host received:", request);
+
+    if (request.complete !== undefined) {
+      this.handleCompletion(request);
+    } else if (request.offer !== undefined) {
+      this.handleOffer(request);
+    } else if (request.ice !== undefined) {
+      this.handleIce(request);
+    } else {
+      console.warn("Unknown host message:", request);
     }
+  }
 
-    const room =
-        getValidRoom(body);
-
-    if (!room) {
-        sendJson(
-            res,
-            {
-                error:
-                    `room does not exist ${body.host}`,
-            }
-        );
-
-        return;
-    }
-
+  private getValidClient(
+    request: PeerMessage,
+  ): ActiveConnectionRequest | undefined {
     if (
-        body.id === undefined
+      typeof request.id !== "number" ||
+      !Number.isSafeInteger(request.id)
     ) {
-        sendJson(
-            res,
-            {
-                error:
-                    "room does not exist, or missing an id",
-            }
-        );
-
-        return;
+      return undefined;
     }
 
-    //
-    // Forward answer to host.
-    //
-    room.sendToHost(body);
+    return this.queueingClients.get(request.id);
+  }
 
-    //
-    // Tell the client the transaction completed.
-    //
-    sendJson(
-        res,
-        {
-            response: "completed",
-        }
-    );
+  private handleOffer(request: PeerMessage): void {
+    const user = this.getValidClient(request);
 
-    console.log(
-        "sent request to host, should complete transaction"
-    );
+    if (!user) {
+      console.warn("Invalid client for offer:", request.id);
+      return;
+    }
+
+    user.push(request);
+  }
+
+  private handleIce(request: PeerMessage): void {
+    const user = this.getValidClient(request);
+
+    if (!user) return;
+
+    user.push(request);
+  }
+
+  private handleCompletion(request: PeerMessage): void {
+    const user = this.getValidClient(request);
+
+    if (!user) return;
+
+    this.queueingClients.delete(user.clientId!);
+
+    console.log("Completed connection:", user.clientId);
+  }
+
+  sendToHost(message: unknown): void {
+    sendJson(this.client, message);
+  }
+
+  destroy(): void {
+    if (this.destroyed) return;
+
+    this.destroyed = true;
+
+    if (GameRoom.ROOMS.get(this.hostId) === this) {
+      GameRoom.ROOMS.delete(this.hostId);
+    }
+
+    for (const user of this.queueingClients.values()) {
+      user.push({ error: "host disconnected" });
+      user.destroy();
+    }
+
+    this.queueingClients.clear();
+
+    console.log("Removing room:", this.hostId);
+  }
 }
 
-/**
- * Validate that a room exists and its host
- * WebSocket is still alive.
- */
-function getValidRoom(
-    request: PeerMessage
-): GameRoom | null {
+class ActiveConnectionRequest {
+  readonly client: WebSocket;
+
+  room: GameRoom | null = null;
+  clientId: number | null = null;
+  hostId: string | null = null;
+
+  private destroyed = false;
+
+  constructor(client: WebSocket) {
+    this.client = client;
+
+    client.on("message", (data) => {
+      try {
+        this.onMessage(data);
+      } catch (error) {
+        console.error("Client error:", error);
+        this.closeWithError("not a valid request, closing socket");
+      }
+    });
+
+    client.on("close", () => this.destroy());
+
+    client.on("error", (error) => {
+      console.error("Client WebSocket error:", error);
+      this.destroy();
+    });
+
+    sendJson(client, {
+      response: "started client connection process",
+    });
+  }
+
+  private onMessage(data: RawData): void {
+    const request = parseMessage(data);
+
+    if (this.room === null) {
+      this.handleRequest(request);
+      return;
+    }
+
+    if (request.answer !== undefined) {
+      this.handleAnswer(request);
+      return;
+    }
+
+    if (request.candidate !== undefined) {
+      this.handleIce(request);
+      return;
+    }
+
+    throw new Error("Needs a request, answer or candidate field");
+  }
+
+  private getValidRoomOrCloseSocket(
+    request: PeerMessage,
+  ): GameRoom | null {
     if (!request.host) {
-        return null;
+      sendError(this.client, "no host code provided");
+      this.destroy();
+      return null;
     }
 
-    const room =
-        GameRoom.get(
-            request.host
-        );
-
-    if (!room) {
-        return null;
-    }
+    const room = GameRoom.get(request.host);
 
     if (
-        room.client.readyState ===
-        WebSocket.CLOSED ||
-        room.client.readyState ===
-        WebSocket.CLOSING
+      !room ||
+      room.client.readyState === WebSocket.CLOSED ||
+      room.client.readyState === WebSocket.CLOSING
     ) {
-        return null;
+      sendError(this.client, `room does not exist ${request.host}`);
+      this.destroy();
+      return null;
     }
 
     return room;
-}
+  }
 
-/**
- * Read and parse a JSON HTTP request body.
- */
-function readJsonBody(
-    req: IncomingMessage
-): Promise<PeerMessage> {
-    return new Promise(
-        (resolve, reject) => {
-            let data = "";
-            let finished = false;
+  private handleRequest(request: PeerMessage): void {
+    const room = this.getValidRoomOrCloseSocket(request);
 
-            req.setEncoding(
-                "utf8"
-            );
+    if (!room) return;
 
-            req.on(
-                "data",
-                (chunk: string) => {
-                    if (finished) {
-                        return;
-                    }
+    let clientId: number;
 
-                    data += chunk;
+    do {
+      clientId = generateClientId();
+    } while (room.hasClient(clientId));
 
-                    if (
-                        Buffer.byteLength(
-                            data,
-                            "utf8"
-                        ) >
-                        MAX_BODY_SIZE
-                    ) {
-                        finished = true;
+    this.clientId = clientId;
+    this.room = room;
+    this.hostId = room.hostId;
 
-                        reject(
-                            new Error(
-                                "Request body too large"
-                            )
-                        );
+    room.queueingClients.set(clientId, this);
 
-                        req.destroy();
-                    }
-                }
-            );
+    request.id = clientId;
+    request.host = room.hostId;
 
-            req.on(
-                "end",
-                () => {
-                    if (finished) {
-                        return;
-                    }
+    room.sendToHost(request);
 
-                    finished = true;
+    console.log("Registered client:", clientId);
+  }
 
-                    try {
-                        const parsed: unknown =
-                            JSON.parse(data);
+  private handleAnswer(request: PeerMessage): void {
+    if (!this.room || this.clientId === null) return;
 
-                        if (
-                            typeof parsed !==
-                            "object" ||
-                            parsed === null ||
-                            Array.isArray(parsed)
-                        ) {
-                            reject(
-                                new Error(
-                                    "JSON body must be an object"
-                                )
-                            );
+    request.id = this.clientId;
+    request.host = this.hostId!;
 
-                            return;
-                        }
+    this.room.sendToHost(request);
+  }
 
-                        resolve(
-                            parsed as PeerMessage
-                        );
-                    } catch {
-                        reject(
-                            new Error(
-                                "Invalid JSON"
-                            )
-                        );
-                    }
-                }
-            );
+  private handleIce(request: PeerMessage): void {
+    if (!this.room || this.clientId === null) return;
 
-            req.on(
-                "error",
-                (error) => {
-                    if (!finished) {
-                        finished = true;
-                        reject(error);
-                    }
-                }
-            );
-        }
-    );
-}
+    request.id = this.clientId;
+    request.host = this.hostId!;
 
-/**
- * Send a JSON HTTP response.
- */
-function sendJson(
-    res: ServerResponse,
-    body: unknown
-): void {
+    this.room.sendToHost(request);
+  }
+
+  push(message: unknown): void {
+    sendJson(this.client, message);
+  }
+
+  private closeWithError(error: string): void {
+    sendError(this.client, error);
+    this.client.close(1008, "Invalid request");
+    this.destroy();
+  }
+
+  destroy(): void {
+    if (this.destroyed) return;
+
+    this.destroyed = true;
+
     if (
-        res.writableEnded
+      this.room &&
+      this.clientId !== null &&
+      this.room.queueingClients.get(this.clientId) === this
     ) {
-        return;
+      this.room.queueingClients.delete(this.clientId);
     }
 
-    const json =
-        JSON.stringify(body);
-
-    res.statusCode = 200;
-
-    res.setHeader(
-        "Content-Type",
-        "application/json"
-    );
-
-    res.setHeader(
-        "Content-Length",
-        Buffer.byteLength(json)
-    );
-
-    res.end(json);
+    console.log("Client disconnected:", this.clientId);
+  }
 }
-
-/* ============================================================
- * ADDITIONAL GameRoom HELPER
- * ============================================================
- */
-
-//
-// Kept outside the class above to make the main class
-// structure closely resemble the Java implementation.
-//
-declare module "ws" {
-    interface WebSocket {
-        __peerServerRoomCheck?: boolean;
-    }
-}
-
-/* ============================================================
- * STATIC FILE SERVER
- * ============================================================
- */
 
 function serveStaticFile(
-    req: IncomingMessage,
-    res: ServerResponse
+  req: IncomingMessage,
+  res: ServerResponse,
 ): void {
-    if (!req.url) {
-        res.statusCode = 400;
-        res.end("Bad request");
-        return;
+  if (!req.url) {
+    res.statusCode = 400;
+    res.end("Bad request");
+    return;
+  }
+
+  let pathname: string;
+
+  try {
+    pathname = decodeURIComponent(
+      new URL(req.url, "https://localhost").pathname,
+    );
+  } catch {
+    res.statusCode = 400;
+    res.end("Bad request");
+    return;
+  }
+
+  if (pathname === "/") pathname = "/index.html";
+
+  const filePath = path.resolve(PUBLIC_DIR, "." + pathname);
+
+  if (
+    filePath !== PUBLIC_DIR &&
+    !filePath.startsWith(PUBLIC_DIR + path.sep)
+  ) {
+    res.statusCode = 403;
+    res.end("Forbidden");
+    return;
+  }
+
+  fs.stat(filePath, (error, stats) => {
+    if (error || !stats.isFile()) {
+      res.statusCode = 404;
+      res.end("Not found");
+      return;
     }
 
-    let pathname: string;
-
-    try {
-        pathname =
-            decodeURIComponent(
-                new URL(
-                    req.url,
-                    "https://localhost"
-                ).pathname
-            );
-    } catch {
-        res.statusCode = 400;
-        res.end("Bad request");
-        return;
-    }
-
-    if (
-        pathname === "/"
-    ) {
-        pathname =
-            "/index.html";
-    }
-
-    const filePath =
-        path.resolve(
-            PUBLIC_DIR,
-            "." + pathname
-        );
-
-    console.log(
-        "Static request:",
-        pathname,
-        "->",
-        filePath
+    res.statusCode = 200;
+    res.setHeader(
+      "Content-Type",
+      lookupMimeType(filePath) || "application/octet-stream",
     );
 
-    //
-    // Prevent directory traversal.
-    //
-    if (
-        filePath !== PUBLIC_DIR &&
-        !filePath.startsWith(
-            PUBLIC_DIR +
-            path.sep
-        )
-    ) {
-        console.log(
-            "Blocked path traversal:",
-            filePath
-        );
-
-        res.statusCode = 403;
-        res.end("Forbidden");
-
-        return;
+    if (req.method === "HEAD") {
+      res.end();
+      return;
     }
 
-    fs.stat(
-        filePath,
-        (error, stats) => {
-            if (error) {
-                console.error(
-                    "File does not exist:",
-                    filePath,
-                    error.message
-                );
+    const stream = fs.createReadStream(filePath);
 
-                res.statusCode = 404;
-                res.end("Not found");
+    stream.on("error", (error) => {
+      console.error(error);
 
-                return;
-            }
-
-            if (!stats.isFile()) {
-                console.error(
-                    "Not a file:",
-                    filePath
-                );
-
-                res.statusCode = 404;
-                res.end("Not found");
-
-                return;
-            }
-
-            const contentType =
-                lookupMimeType(
-                    filePath
-                ) ||
-                "application/octet-stream";
-
-            console.log(
-                "Serving:",
-                filePath,
-                contentType
-            );
-
-            res.statusCode = 200;
-
-            res.setHeader(
-                "Content-Type",
-                contentType
-            );
-
-            if (
-                req.method ===
-                "HEAD"
-            ) {
-                res.end();
-                return;
-            }
-
-            const stream =
-                fs.createReadStream(
-                    filePath
-                );
-
-            stream.on(
-                "error",
-                (error) => {
-                    console.error(
-                        "Error reading file:",
-                        error
-                    );
-
-                    if (
-                        !res.headersSent
-                    ) {
-                        res.statusCode = 500;
-                        res.end(
-                            "Internal server error"
-                        );
-                    } else {
-                        res.destroy();
-                    }
-                }
-            );
-
-            stream.pipe(res);
-        }
-    );
-}
-
-/* ============================================================
- * HTTPS SERVER
- * ============================================================
- */
-
-const httpsServer = https.createServer(
-    {
-        key: fs.readFileSync("./certs/server.key"),
-        cert: fs.readFileSync("./certs/server.cert"),
-    },
-
-    async (req, res) => {
-        console.log(
-            "========== HTTP REQUEST =========="
-        );
-
-        console.log(
-            req.method,
-            req.url
-        );
-
-        console.log(
-            "Headers:",
-            req.headers
-        );
-
-        //
-        // WebRTC signaling endpoint.
-        //
-        if (
-            req.method === "POST" &&
-            req.url === "/peer_client"
-        ) {
-            console.log(
-                "========== PEER CLIENT REQUEST =========="
-            );
-
-            await handleClient(
-                req,
-                res
-            );
-
-            return;
-        }
-
-        //
-        // Static files.
-        //
-        if (
-            req.method === "GET" ||
-            req.method === "HEAD"
-        ) {
-            serveStaticFile(
-                req,
-                res
-            );
-
-            return;
-        }
-
-        res.statusCode = 404;
-        res.end("Not found");
-    }
-);
-
-
-httpsServer.on(
-    "secureConnection",
-    (tlsSocket) => {
-        console.log(
-            "TLS connection established:",
-            tlsSocket.remoteAddress
-        );
-    }
-);
-
-httpsServer.on(
-    "tlsClientError",
-    (error) => {
-        console.error(
-            "TLS client error:",
-            error
-        );
-    }
-);
-
-/* ============================================================
- * WEBSOCKET SERVER
- * ============================================================
- *
- * noServer = true means the HTTPS server handles the actual
- * HTTP upgrade and then hands the connection to ws.
- */
-
-const wss =
-    new WebSocketServer({
-        noServer: true,
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.end("Internal server error");
+      } else {
+        res.destroy();
+      }
     });
 
-/**
- * HTTPS -> WebSocket upgrade.
- *
- * /peer_server becomes a WebSocket connection.
- */
-httpsServer.on(
-    "upgrade",
-    (req, socket, head) => {
-        console.log(
-            "========== WEBSOCKET UPGRADE RECEIVED =========="
-        );
+    stream.pipe(res);
+  });
+}
 
-        console.log("URL:", req.url);
-        console.log("Method:", req.method);
-        console.log("Headers:", req.headers);
-
-        socket.on("error", (error) => {
-            console.error(
-                "WebSocket upgrade socket error:",
-                error
-            );
-        });
-
-        socket.on("close", () => {
-            console.log(
-                "WebSocket upgrade socket closed"
-            );
-        });
-
-        if (req.url !== "/peer_server") {
-            console.log(
-                "Rejecting WebSocket URL:",
-                req.url
-            );
-
-            socket.destroy();
-            return;
-        }
-
-        console.log(
-            "Passing socket to ws.handleUpgrade()"
-        );
-
-        wss.handleUpgrade(
-            req,
-            socket,
-            head,
-            (ws) => {
-                console.log(
-                    "========== WEBSOCKET UPGRADE SUCCESS =========="
-                );
-
-                wss.emit(
-                    "connection",
-                    ws,
-                    req
-                );
-            }
-        );
+const httpsServer = https.createServer(
+  {
+    key: fs.readFileSync("./certs/server.key"),
+    cert: fs.readFileSync("./certs/server.cert"),
+  },
+  (req, res) => {
+    if (
+      req.url === "/peer_server" ||
+      req.url === "/peer_client"
+    ) {
+      res.statusCode = 426;
+      res.setHeader("Upgrade", "websocket");
+      res.end("WebSocket upgrade required");
+      return;
     }
+
+    if (req.method === "GET" || req.method === "HEAD") {
+      serveStaticFile(req, res);
+      return;
+    }
+
+    res.statusCode = 404;
+    res.end("Not found");
+  },
 );
 
-/**
- * Host connected to /peer_server.
- */
+const wss = new WebSocketServer({
+  noServer: true,
+  maxPayload: MAX_MESSAGE_SIZE,
+});
+
+httpsServer.on("upgrade", (req, socket, head) => {
+  if (
+    req.url !== "/peer_server" &&
+    req.url !== "/peer_client"
+  ) {
+    socket.destroy();
+    return;
+  }
+
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit("connection", ws, req);
+  });
+});
+
 wss.on(
-    "connection",
-    (ws: WebSocket, req: IncomingMessage) => {
-        console.log(
-            "========== PEER HOST CONNECTED =========="
-        );
-
-        console.log(
-            "Remote:",
-            req.socket.remoteAddress
-        );
-
-        console.log(
-            "Origin:",
-            req.headers.origin
-        );
-
-        console.log(
-            "User-Agent:",
-            req.headers["user-agent"]
-        );
-
-        const room =
-            new GameRoom(ws);
-
-        console.log(
-            "Created room:",
-            room.hostId
-        );
+  "connection",
+  (ws: WebSocket, req: IncomingMessage) => {
+    if (req.url === "/peer_server") {
+      console.log("Host connected");
+      GameRoom.createNew(ws);
+      return;
     }
+
+    if (req.url === "/peer_client") {
+      console.log("Client connected");
+      new ActiveConnectionRequest(ws);
+      return;
+    }
+
+    ws.close(1008, "Invalid endpoint");
+  },
 );
 
-
-
-
-
-/* ============================================================
- * START SERVER
- * ============================================================
- */
-
-
-
-
-httpsServer.listen(
-    PORT,
-    () => {
-        console.log(
-            `Peer server listening on https://localhost:${PORT}`
-        );
-    }
-);
+httpsServer.listen(PORT, () => {
+  console.log(`HTTPS server listening on port ${PORT}`);
+  console.log(`Host: wss://localhost:${PORT}/peer_server`);
+  console.log(`Client: wss://localhost:${PORT}/peer_client`);
+});
