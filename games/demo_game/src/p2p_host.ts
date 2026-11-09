@@ -161,7 +161,7 @@ export class P2PHost {
     };
     // add the ice to the object if its avalible, othewise adds it to the queued buffer.
     if (peerConnection) peerConnection.addIceCandidate(ice).catch((e) => { console.error(e) });
-    else P2PHost.iceMap.get(peerConnection).push(ice);
+    else P2PHost.iceMap.get(peerConnection)?.push(ice);
   }
 }
 
