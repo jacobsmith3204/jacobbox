@@ -1,31 +1,18 @@
 const peer_client_url = `${location.origin}/peer_client`;
+// returns the promise so it can be used later.
+
 
 //const peerConfiguration = { 'iceServers': [{ urls: "stun:stun.l.google.com:19302" }] }
 
 const peerConfiguration = {
   iceServers: [
     {
-      urls: "stun:stun.relay.metered.ca:80",
+      // Primary standard Google STUN server
+      urls: "stun:stun.l.google.com:19302",
     },
     {
-      urls: "turn:oceania.relay.metered.ca:80",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:oceania.relay.metered.ca:80?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turn:oceania.relay.metered.ca:443",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
-    },
-    {
-      urls: "turns:oceania.relay.metered.ca:443?transport=tcp",
-      username: "cdae4cba9d10986d8368192c",
-      credential: "0E4wUEGm3H1XgUUG",
+      // Alternative fallback Google STUN configurations
+      urls: ["stun:stun1.l.google.com:3478", "stun:stun2.l.google.com:19302"],
     },
   ],
 };
@@ -35,6 +22,10 @@ class P2PClient {
   static signalingChannel;
   static peerConnection;
   static dataChannels;
+
+  static InitPromise;
+  static InitResolve;
+  static InitReject;
 
   host;
   id;
@@ -66,6 +57,7 @@ class P2PClient {
   };
   onClientMessage = (event) => {
     console.log("client Received:", event.data);
+    //messageBuffer.push(event.data);
   };
 
   sendMessageToHost = (dataChannelLabel, message) => {
@@ -76,6 +68,10 @@ class P2PClient {
     return { id: this.id, username: this.username };
   };
 
+  getBufferedMessages = () => {
+    return this.messageBuffer.splice(0, this.messageBuffer.length);
+  }
+
   redirectToGamePage = async () => {
     const htmlString = `<iframe id="p2pFrame" src="p2p/index.html" style="width: 100%;height: 100%;display: inline-block; border-width: 0;position: fixed;top: 0;left: 0;"> </iframe>`;
     // 1. Create a fragment and parse the HTML string
@@ -84,59 +80,52 @@ class P2PClient {
     document.body.appendChild(fragment);
   };
 
-
-
   // call after setting up gameclient function handlers, starts the connection handshake
   start() {
     // request offer from server (GET) will pend until the offer is requested from the host and a valid/invalid response is returned.
-
     if (P2PClient.signalingChannel) {
       const message = "starting fresh signalingChannel";
       console.warn(message);
       P2PClient.signalingChannel.close();
     }
+    const { promise, resolve, reject } = Promise.withResolvers();
+    P2PClient.InitPromise = promise;
+    P2PClient.InitResolve = resolve;
+    P2PClient.InitReject = reject;
 
     console.log("start client ", peer_client_url);
 
     P2PClient.signalingChannel = new WebSocket(peer_client_url);
 
     P2PClient.signalingChannel.addEventListener("open", P2PClient.SendStartRequest);
-    P2PClient.signalingChannel.addEventListener("message", P2PClient.HandleMessage);
+    P2PClient.signalingChannel.addEventListener("message", P2PClient.SC_HandleMessage);
+    P2PClient.signalingChannel.addEventListener("close", P2PClient.SC_close);
+    P2PClient.signalingChannel.addEventListener("error", P2PClient.SC_error);
 
-    // allows us to wait till the start function is closed
-    const { promise, resolve, reject } = Promise.withResolvers();
+    // bind the function to return the data
+    window.addEventListener("message", P2PClient.RouteMessageToClient);
+    return P2PClient.InitPromise.then(P2PClient.BindEventsToChildIframe);
+  }
 
-    P2PClient.signalingChannel.addEventListener("close", () => {
-      try {
-        // should close when the server is no longer needed or
-        if (!P2PClient.peerConnection) return reject(new Error("initial communication failed, no peerConnection established"));
-
-        switch (P2PClient.peerConnection.iceConnectionState) {
-          case "connected":
-          case "completed":
-            resolve(P2PClient.instance);
-            return;
-          case "failed":
-            reject(new Error("ICE failed to connect"));
-            break;
-          case "closed":
-            reject(new Error("ICE connection closed"));
-            break;
-          default:
-            reject(new Error("connection to server closed"));
-        }
-      } catch (e) {
-        console.error(e);
+  static SC_close() {
+    try {
+      // should close when the server is no longer needed or
+      if (!P2PClient.peerConnection) return P2PClient.InitReject(new Error("initial communication failed, no peerConnection established"));
+      switch (P2PClient.peerConnection.iceConnectionState) {
+        case "failed":
+          P2PClient.InitReject(new Error("ICE failed to connect"));
+          break;
+        case "closed":
+          P2PClient.InitReject(new Error("ICE p2p connection was closed prematurely"));
+          break;
       }
-    });
-    P2PClient.signalingChannel.addEventListener("error", (e) => {
+    } catch (e) {
       console.error(e);
-      reject(e);
-      //reject(new Error("connection encountered an error"));
-    });
-
-    // returns the promise so it can be used later.
-    return promise;
+    }
+  }
+  static SC_error(e) {
+    console.error(e);
+    P2PClient.InitReject(new Error("connection encountered an error"));
   }
 
   static SendStartRequest() {
@@ -144,7 +133,7 @@ class P2PClient {
     P2PClient.signalingChannel.send(JSON.stringify({ request: "findGame", host: P2PClient.host }));
   }
 
-  static HandleMessage(event) {
+  static SC_HandleMessage(event) {
     const message = JSON.parse(event.data);
     console.log("client recieved message:", message);
     // message offer will have the name/id/hash of the client
@@ -153,7 +142,7 @@ class P2PClient {
     else if (message.candidate) P2PClient.HandleIceCandidate(message);
     else if (message.error) P2PClient.signalingChannel.dispatchEvent(new ErrorEvent("error", { error: new Error(event.data.error) }));
     else {
-      console.warn(event.data);
+      console.warn("[uncaught message]", event.data);
     }
   }
 
@@ -240,6 +229,51 @@ class P2PClient {
       P2PClient.peerConnection.addIceCandidate(ice);
     } catch (e) {
       console.error(e);
+    }
+  }
+
+
+  /*=== HANDLES TALKING TO THE IFRAME ===== */
+
+  static BindEventsToChildIframe(iframe) {
+    console.log("linking parent DOM client and iframe");
+    P2PClient.instance["onClientMessage"] = (event) => {
+      iframe.contentWindow.postMessage(event.data);
+    };
+    // send a first connected message to allow it to further connect 
+    iframe.contentWindow.postMessage(JSON.stringify({ type: "connected" }));
+    console.log("sent connected message to iframe");
+  }
+
+  static async RouteMessageToClient(event) {
+    const { id, type, method, args } = event.data;
+
+    // Only handle actions meant for parent execution
+    switch (type) {
+      case "PARENT_CALL":
+        try {
+          if (typeof P2PClient.instance[method] !== "function") {
+            throw new Error(`Method ${method} does not exist on parent`);
+          }
+
+          // Execute and await the method
+          const result = await P2PClient.instance[method](...args);
+
+          // Reply to the iframe that sent the message
+          event.source.postMessage({ id, status: "SUCCESS", result }, event.origin);
+        } catch (err) {
+          event.source.postMessage({ id, status: "ERROR", error: err.message }, event.origin);
+        }
+        break;
+      case "INIT":
+        console.log("init message recieved");
+        const iframe = document.getElementById("p2pFrame");
+        console.assert("recieved INIT message from iframe", iframe);
+        P2PClient.InitResolve(iframe);
+        break;
+      default:
+        console.warn("type", type, "not caught");
+        break;
     }
   }
 }

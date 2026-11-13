@@ -12,13 +12,29 @@ type iceServers = { urls: string | string[]; username?: string; credential?: str
 const peerConfiguration = {
   iceServers: [
     {
-      // Primary standard Google STUN server
-      urls: "stun:stun.l.google.com:19302",
+      urls: "stun:stun.relay.metered.ca:80",
     },
     {
-      // Alternative fallback Google STUN configurations
-      urls: ["stun:stun1.l.google.com:3478", "stun:stun2.l.google.com:19302"],
+      urls: "turn:oceania.relay.metered.ca:80",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
     },
+    {
+      urls: "turn:oceania.relay.metered.ca:80?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turn:oceania.relay.metered.ca:443",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+    {
+      urls: "turns:oceania.relay.metered.ca:443?transport=tcp",
+      username: "cdae4cba9d10986d8368192c",
+      credential: "0E4wUEGm3H1XgUUG",
+    },
+   
   ],
 } satisfies { iceServers: iceServers[] };
 

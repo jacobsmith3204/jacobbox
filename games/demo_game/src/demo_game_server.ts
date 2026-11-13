@@ -6,11 +6,11 @@ const ANSI_reset = "\x1b[0m";
 
 class User {
   id;
-  name;
+  username;
   data_channel;
-  constructor(id: UserId, name: string, dc: RTCDataChannel) {
+  constructor(id: UserId, username: string, dc: RTCDataChannel) {
     this.id = id;
-    this.name = name;
+    this.username = username;
     this.data_channel = dc;
   }
 }
@@ -23,6 +23,10 @@ export enum MessageTypes {
   correctGuess = "correctGuess",
   incorrectGuess = "incorrectGuess",
   notYourTurn = "notYourTurn",
+  yourTurn = "yourTurn",
+  joinGame = "joinGame",
+  playerLeft = "playerLeft",
+  playerJoined = "playerJoined",
 }
 
 class FizzBuzzGame extends P2PHost {
@@ -52,8 +56,9 @@ class FizzBuzzGame extends P2PHost {
   initialiseNewGame() {
     console.log("starting new game");
     this.turnNum = 1;
+    this.users = shuffleMap(this.users);
   }
-
+  
   handleMessage(event: any, dc: RTCDataChannel) {
     console.log(`fizzbuzz data_channel received: ${event.data}`);
     try {
@@ -66,7 +71,7 @@ class FizzBuzzGame extends P2PHost {
         case "join":
           // name: , id:
           console.log("join", message);
-          game.createUser(message["id"], message["name"], dc);
+          game.createUser(message["id"], message["username"], dc);
           break;
         case "guess":
           game.processGuess(message["id"], message["guess"], dc);
@@ -90,10 +95,14 @@ class FizzBuzzGame extends P2PHost {
     this.users.forEach((user) => user?.data_channel.send(JSON.stringify(message)));
   }
 
-  sendDirectMessage(userId: UserId, message: any) {
+  sendMessageToUser(userId: UserId, message: any) {
     // sends a message to a spesific user
     this.users.get(userId)?.data_channel.send(JSON.stringify(message));
   }
+  sendMessage(user: User, message: any){
+    user.data_channel.send(JSON.stringify(message));
+  }
+
   returnMessage(dc: RTCDataChannel, message: any) {
     // sends a message to a spesific user
     dc.send(JSON.stringify(message));
@@ -102,9 +111,14 @@ class FizzBuzzGame extends P2PHost {
   // adds a new user to the list
   createUser(id: UserId, name: string, dc: RTCDataChannel) {
     const user = new User(id, name, dc)
+    dc.onclose = () => {
+      FizzBuzzGame.instance.users.delete(id);
+      this.broadcastMessage({type: MessageTypes.playerLeft, userId: id});
+    }
 
-
-    dc.onclose = () => FizzBuzzGame.instance.users.delete(id);
+    this.broadcastMessage({type: MessageTypes.playerJoined, userId: id, username: name});
+    this.sendMessage(user, {type:MessageTypes.joinGame, users: Array.from(this.users.values()).map(el => {return {userId: el.id, username: el.username}})})
+    
     FizzBuzzGame.instance.users.set(id, user);
   }
 
@@ -119,20 +133,25 @@ class FizzBuzzGame extends P2PHost {
 
     if (userId != this.currentTurnUser()) {
       // TODO: send a message saying "WAIT YOUR TURN"
-      this.returnMessage(dc, { type: MessageTypes.notYourTurn , message: this.turnNum });
+      this.returnMessage(dc, { type: MessageTypes.notYourTurn, userId: userId, message: this.turnNum });
       return; // not this users turn
     }
 
     if (this.validateGuess(guess)) {
       console.log("valid guess!");
-      this.returnMessage(dc, { type: MessageTypes.yourGuessCorrect, guess: guess });
+      //this.returnMessage(dc, { type: MessageTypes.yourGuessCorrect, guess: guess });
       this.broadcastMessage({ type: MessageTypes.correctGuess, userId: userId, guess: guess });
+      this.turnNum++;  
     } else {
       console.log("invalid guess!" );
-      this.returnMessage(dc, { type: MessageTypes.yourGuessIncorrect, guess: guess });
+      //this.returnMessage(dc, { type: MessageTypes.yourGuessIncorrect, guess: guess });
       this.broadcastMessage({ type: MessageTypes.incorrectGuess, userId: userId, guess: guess });
+      this.initialiseNewGame();
     }
+    // send a message to the person whos turn it now is asking them to start
+    this.broadcastMessage({type: MessageTypes.yourTurn, userId: Array.from(this.users.values())[(this.turnNum - 1) % this.users.size].id, message: this.turnNum});
   }
+
 
   validateGuess(guess: string) {
 
@@ -152,6 +171,21 @@ class FizzBuzzGame extends P2PHost {
 
   }
 }
+
+function shuffleMap(map: Map<UserId, User>) {
+  // 1. Convert Map entries into an array of [key, value] pairs
+  const entries = Array.from(map.entries());
+  
+  // 2. Shuffle the entries array using the Fisher-Yates algorithm
+  for (let i = entries.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [entries[i], entries[j]] = [entries[j], entries[i]]; // Swap elements
+  }
+  
+  // 3. Rebuild and return a new Map from the shuffled entries
+  return new Map(entries);
+}
+
 
 // start the game
 const game = new FizzBuzzGame();
