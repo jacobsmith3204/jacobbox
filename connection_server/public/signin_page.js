@@ -82,5 +82,12 @@ document.getElementById("gameCodeForm").addEventListener("submit", form.SubmitGa
 
 
 
-
-
+function startClient(gameId, username) {           
+  try {                                            
+    window.P2PClient = P2PClient;                  
+    const client = new P2PClient(gameId, username);
+    return client.start();                         
+  } catch (e) {                                    
+    console.error(e);                              
+  }                                                
+}                                                  

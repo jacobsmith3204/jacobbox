@@ -1,5 +1,4 @@
 const peer_client_url = `${location.origin}/peer_client`;
-// returns the promise so it can be used later.
 
 const peerConfiguration = {
   iceServers: [
@@ -54,7 +53,6 @@ class P2PClient {
   };
   onClientMessage = (event) => {
     console.log("client Received:", event.data);
-    //messageBuffer.push(event.data);
   };
 
   sendMessageToHost = (dataChannelLabel, message) => {
@@ -324,19 +322,15 @@ async function init_http_proxy(channel) {
   }
 }
 
-// client for the game (browser)
-function startClient(gameId, username) {
-  try {
-    window.P2PClient = P2PClient;
 
-    const client = new P2PClient(gameId, username);
-    return client.start();
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// for calling manually
-function redirectToGamePage() {
-  P2PClient.instance.redirectToGamePage();
-}
+// DEMO TO START THE CIENT (browser)
+// where game id is the 4char code and username is whatever vanity name they added
+//function startClient(gameId, username) {
+//  try {
+//    window.P2PClient = P2PClient;
+//    const client = new P2PClient(gameId, username);
+//    return client.start();
+//  } catch (e) {
+//    console.error(e);
+//  }
+//}
