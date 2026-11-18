@@ -34,7 +34,7 @@ const peerConfiguration = {
       username: "cdae4cba9d10986d8368192c",
       credential: "0E4wUEGm3H1XgUUG",
     },
-   
+
   ],
 } satisfies { iceServers: iceServers[] };
 
@@ -42,13 +42,15 @@ const peerConfiguration = {
 // FIRST REQUIRING A CONNECTION TO A PUBLIC SERVER TO ALLOW THE RTC CONNECTION HANDSHAKE PROCESS
 export class P2PHost {
   //
+  static rootDir : string; 
   static connected_clients: { [key: string]: RTCPeerConnection } = {};
   static signalingChannel: WebSocket; // websocket channel for setup/ comunication with the server
   static iceMap: Map<any, any[]> = new Map<any, any[]>();
 
   static dataChannels: { [key: string]: (socket: RTCDataChannel) => void } = {};
 
-  constructor() {
+  constructor(rootDir: string) {
+    P2PHost.rootDir = rootDir; 
     // ADD NEW DATA CHANNELS LIKE THIS
     P2PHost.dataChannels["game_socket"] = (dc) => {
       dc.onopen = () => console.log("P2Phost game_socket open");
@@ -75,10 +77,10 @@ export class P2PHost {
     // opens the weboscket connection to the server
     P2PHost.signalingChannel = new WebSocket(url, wsOptions);
 
-    if(wsOptions.rejectUnauthorized) console.warn("using an insecure websocket channel");
+    if (wsOptions.rejectUnauthorized) console.warn("using an insecure websocket channel");
 
     // lets us know we are connected
-    P2PHost.signalingChannel.addEventListener("open", () =>  console.log("p2p host websocket open and active"));
+    P2PHost.signalingChannel.addEventListener("open", () => console.log("p2p host websocket open and active"));
     // wait for messages to the websocket from the server to handle the incoming request for clients.
     P2PHost.signalingChannel.addEventListener("message", P2PHost.HandleMessage);
     // exits the program since we are no longer connected to the main server
@@ -204,7 +206,19 @@ const httpProxyDataChannel = (dc: RTCDataChannel) => {
     // assumes data is in json format
     const req = JSON.parse(msg.data);
     console.log(req);
-    const filePath = path.join(__dirname, "../public", req.path ?? "NO_PATH_PROVIDED");
+
+    
+
+
+
+    // checks the rootDir of the server (passed from your class that extends this) 
+    var filePath = path.join(P2PHost.rootDir, "../public", req.path ?? "NO_PATH_PROVIDED");
+    if (!await checkFileExists(filePath)) {
+      // falls back to the common path (relitive to this file in application/common/src)
+      console.log("file does not exist:", filePath, "looking in common directory");
+      filePath = path.join(__dirname, "../public", req.path ?? "NO_PATH_PROVIDED");
+    }
+    console.log(filePath , "from", req.path);
 
     try {
       // fetchs the file and returns it
@@ -221,11 +235,20 @@ const httpProxyDataChannel = (dc: RTCDataChannel) => {
     } catch (e) {
       // if it cant find the file or throws an error sends the appropriate response
       dc.send(JSON.stringify({ ok: false, id: req.id, error: "Not found" }));
-      console.log("failed to send to client", filePath);
+      console.log("failed to send to client", filePath, "from requested path" , req.path);
       console.log("had an error", req.id);
     }
   };
 };
+
+async function checkFileExists(filePath: string) {
+  try {
+    await fs.promises.access(filePath, fs.promises.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // makes sure the file types are interpreted correctly
 function getMime(file: string) {
@@ -240,6 +263,8 @@ function getMime(file: string) {
 // connects to localhost or if hosting from the web uses the urls host name and port
 const locationHost = typeof location !== "undefined" ? location.host : "localhost:8000";
 const peer_host_wss_url = `wss://${locationHost}/peer_server`;
-export function startHost() {
-  const host = new P2PHost().start(peer_host_wss_url);
-}
+
+// demo for how to start this
+//export function startHost() {
+//  const host = new P2PHost(__dirname).start(peer_host_wss_url);
+//}

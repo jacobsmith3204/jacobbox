@@ -1,4 +1,4 @@
-import { P2PHost } from "./p2p_host";
+import { P2PHost } from  "@common/src/p2p_host";
 
 const ANSI_red = "\x1b[31m";
 const ANSI_green = "\x1b[32m";
@@ -40,7 +40,7 @@ class FizzBuzzGame extends P2PHost {
   };
 
   constructor() {
-    super();
+    super(__dirname);
     FizzBuzzGame.instance = this;
 
     // Handle messages from clients
