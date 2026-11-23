@@ -26,7 +26,7 @@ create a directory under ```./applications``` for your game.  inside your game d
 the way the project is structured i've included some .js & .ts files in ```./applications/common``` that you just need to extend in your own game.
 
 ## server
-- ```p2p_host.ts``` provides a class that your own node typescript server can extend to provide functionality needed to talk to p2p_client.js on the server (you don't talk to p2p_client directly but its good to know what it can do)
+- ```p2p_host.ts``` provides a class that your own node typescript server can extend to provide functionality needed to talk to ```p2p_client.js``` hosted on the (local/remote)server
 
 ```
  // fetch it from
@@ -63,7 +63,13 @@ game.start(server_url);
 
 
 ```
-## client
-- ```clientMirror.js``` since the host's game isn't hosted on the same domain and can be made by anyone it is inherently insecure. 
-this means resources can't be shared directly from p2p_client.js, so the iframe will talk through clientMirror.js to actually pass through data through the established peer-to-peer rtcPeerConnection allowing comunication with the host. 
+## client 
+- ```clientMirror.js``` this allows you to talk to ```p2p_client.js``` from within the iframe your game will load inside. 
 
+resources can't be shared directly from ```p2p_client.js```, since your games is not hosted on the same domain its considered an **insecure** connection so we use ```clientMirror.js``` to call functions from p2p_client.js outside the iframe, which will then return the result back through to the iframe.
+
+the way the p2p_host.ts server is built ```./applications/common/public/[...clientMirror.js]``` will be fetched if it doesnt find anything at your ```[game]/public/``` location, so you can load it along side your game code from the html like so and it should just work. 
+``` 
+ <script src="clientMirror.js"></script> 
+ <script src="yourGame.js"></script>
+```
