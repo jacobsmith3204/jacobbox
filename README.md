@@ -3,12 +3,15 @@ jackbox clone for friends
 
 # how it works
 
-a websocket connection from the host's server is established on my server creating a "room" the clients can then join.  
-when the clients try connect to the "room" it then initates a RTCPeerConnection with the host, piggybacking the communication through my server until a direct peer-to-peer connection is established.  
+a websocket connection from the host's server to my server is established creating a "room" the clients can then join.  
+ when the clients try connect to the "room" it then initates a RTCPeerConnection with the host, piggybacking only the initial communication through my server until a direct peer-to-peer connection is established.  
+                
+once the peer-to-peer connection is established, the page opens an iframe and requests for its content will direct to the host's server via the peer-to-peer connection. 
+to do this im using a service worker to forward fetch requests for all the games "local" resources.  
+to the content loaded within the iframe the peer-to-peer host appears to behave as if it was just a regular server to anything loaded from it. 
+                
+               
 
-once the peer-to-peer connection is established the clients page opens an iframe which will direct to the host's server. 
-im using a service worker to forward fetch requests and any other "local" resource fetches from within the iframe through to the host via the peer-to-peer connection.  
-this should make the host appear to behave as if it was just a regular server to anything loaded from it. 
 
 # using jacobbox
 to use jacobbox you can run it standalone    (standalone server located at ```./connection_server```)    
