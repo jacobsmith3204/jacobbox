@@ -73,3 +73,7 @@ the way the p2p_host.ts server is built ```./applications/common/public/[...clie
  <script src="clientMirror.js"></script> 
  <script src="yourGame.js"></script>
 ```
+
+there is no other message protocol on top of the datachannel events so once the rtcPeerConnection is established its up to you how to start comunicating between the client and host to implement your game. 
+
+if you need a hint for how to use anything the ```./applications/fizz_buzz/``` demo is a decent place to start as its pretty simple.   
