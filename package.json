@@ -16,8 +16,10 @@
   "main": "server.ts",
   "scripts": {
     "host": "npx vite-node connection_server/src/connection_server.ts",
-    "demo:remote": "npx vite-node applications/fizz_buzz/src/game_server.ts https://jacobsmith3204.ngrok.io/peer_server",
-    "demo:local": "npx vite-node applications/fizz_buzz/src/game_server.ts"
+    "demo:remote": "npx vite-node applications/fizz_buzz/src/host_server.ts https://jacobsmith3204.ngrok.io/peer_server",
+    "demo:local": "npx vite-node applications/fizz_buzz/src/host_server.ts", 
+    "playtest_viewer:remote": "npx vite-node applications/playtest_viewer/src/host_server.ts https://jacobsmith3204.ngrok.io/peer_server"
+
   },
   "devDependencies": {
     "@types/mime-types": "^3.0.1",
