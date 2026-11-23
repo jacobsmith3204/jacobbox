@@ -68,8 +68,9 @@ class P2PClient {
   }
 
   redirectToGamePage = async () => {
+    console.log("creating iframe");
     // iframe links to p2p/.. which will be caught with the service worker route the traffic through the P2P connection to the host server
-    const htmlString = `<iframe id="p2pFrame" src="p2p/index.html" style="width: 100%;height: 100%;display: inline-block; border-width: 0;position: fixed;top: 0;left: 0;"> </iframe>`;
+    const htmlString = `<iframe id="p2pFrame" src="jacobbox/p2p/index.html" style="width: 100%;height: 100%;display: inline-block; border-width: 0;position: fixed;top: 0;left: 0;"> </iframe>`;
     // 1. Create a fragment and parse the HTML string
     const fragment = document.createRange().createContextualFragment(htmlString);
     // 2. Append it directly to your target element
@@ -106,7 +107,7 @@ class P2PClient {
     return P2PClient.InitPromise.then(P2PClient.bindRoutingToIframe);
   }
 
-  
+
   static SC_requestGame() {
     console.log("client looking for game");
     P2PClient.signalingChannel.send(JSON.stringify({ request: "findGame", host: P2PClient.host }));
@@ -252,9 +253,9 @@ class P2PClient {
     switch (type) {
       case "PARENT_CALL":
         try {
-          if (typeof P2PClient.instance[method] !== "function") 
+          if (typeof P2PClient.instance[method] !== "function")
             throw new Error(`Method ${method} does not exist on parent`);
-        
+
           // Execute and await the method
           const result = await P2PClient.instance[method](...args);
 
@@ -275,6 +276,19 @@ class P2PClient {
   }
 }
 
+// updates the address to point at .../index.html since the service worker needs the correct scope to work
+const baseDir = location.pathname.endsWith(".html")
+  ? location.pathname.slice(0, location.pathname.lastIndexOf("/") + 1)
+  : location.pathname.endsWith("/")
+    ? location.pathname
+    : `${location.pathname}/`;
+
+if (!location.pathname.includes(baseDir)) {
+  console.warn("replacing path");
+  location.replace(`${baseDir}index.html`);
+}
+
+
 // connects the service worker to allow fetch requests to */p2p/* to use the connection to the host to fetch files
 async function init_http_proxy(channel) {
   try {
@@ -282,40 +296,43 @@ async function init_http_proxy(channel) {
     console.log("channel http_proxy is open");
     window.http_proxy = channel;
 
-    let str = location.pathname;
-    let path = `${str.slice(0, str.lastIndexOf("/"))}/sw.js`;
-    console.log("registering service worker", path);
 
-    await navigator.serviceWorker.register(path);
+    const path = `${baseDir}sw.js`;
+    console.log("registering service worker", path, "scope:", baseDir);
+
+    await navigator.serviceWorker.register(path, { scope: baseDir });
     console.log("service worker registered");
 
-    await new Promise((resolve) => {
+
+    await new Promise(async (resolve, reject) => {
       try {
-        // Create a MessageChannel to bridge SW <-> DataChannel
         const msgChannel = new MessageChannel();
-        // DataChannel → SW
-        channel.onmessage = (ev) => msgChannel.port1.postMessage(ev.data);
-        // SW → DataChannel
-        msgChannel.port1.onmessage = (ev) => {
-          resolve(ev.data);  // Resolve promise on first message from the service worker when it initialises.
-          channel.send(ev.data); // sends data via the channel
+
+        channel.onmessage = (ev) => {
+          msgChannel.port1.postMessage(ev.data);
         };
-        // Wait for SW to be active, (then sends a message to connect the port?)
+
+        msgChannel.port1.onmessage = (ev) => {
+          console.log("init message from SW:", ev.data);
+          resolve(ev.data);
+          channel.send(ev.data);
+        };
+
         navigator.serviceWorker.ready.then((reg) => {
-          reg.active.postMessage(
-            {
-              type: "setPort",
-              port: msgChannel.port2,
-            },
-            [msgChannel.port2],
+          console.log("SW ready, active worker:", reg.active?.scriptURL);
+          reg.active?.postMessage(
+            { type: "setPort", port: msgChannel.port2 },
+            [msgChannel.port2]
           );
-        });
+        }).catch(reject);
+
       } catch (e) {
-        console.error(e);
+        reject(e);
       }
     });
+
+
   } catch (e) {
-    console.groupEnd();
     console.error(e);
   } finally {
     console.groupEnd();
